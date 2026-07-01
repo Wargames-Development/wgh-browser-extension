@@ -7,7 +7,7 @@ The repository uses one shared source tree with browser-specific build outputs:
 - Chrome, Microsoft Edge, and Opera GX use the Chromium build.
 - Firefox uses the Firefox build.
 
-Patch 005 adds the Wargames extension icon set to both builds and corrects Wargames production host access to `https://*.wargames.host/*` and `https://*.wargames.uk/*`. The old `https://*.wargames.hosting/*` pattern should not appear in source manifests or built manifests.
+Patch 005 adds the Wargames extension icon set to both builds and corrects Wargames production host access to `https://*.wargames.host/*` and `https://*.wargames.uk/*`. Retired Wargames production domains should not appear in source files, manifests, or built extension packages.
 
 Manual copy/export from Wargames Solder remains the fallback path while extension-assisted workflows are being developed or reviewed. For the full local Wargames Solder to browser extension to Technic changelog test flow, see [Local End-to-End Solder Handoff Test Notes](local-e2e-solder-handoff-testing.md).
 
@@ -86,7 +86,7 @@ https://www.technicpack.net/modpack/edit/*/versions
 https://www.technicpack.net/dashboard/modpack/*/versions
 ```
 
-The extension should not request `<all_urls>`, `https://*/*`, or the old `https://*.wargames.hosting/*` pattern. Patch 005 also removes the explicit `tabs` permission; the background coordinator still creates and messages workflow tabs, but the manifest should not trigger a separate Chromium-family browsing-history warning from `tabs`.
+The extension should not request `<all_urls>`, `https://*/*`, or any retired Wargames production host pattern. Patch 005 also removes the explicit `tabs` permission; the background coordinator still creates and messages workflow tabs, but the manifest should not trigger a separate Chromium-family browsing-history warning from `tabs`.
 
 ## Chrome local load
 
@@ -138,7 +138,7 @@ For later workflow patches, record these checks without sharing secrets:
 - whether the extension loaded cleanly;
 - whether permissions matched the expected manifest;
 - whether the Wargames icon appears in the extension list/toolbar area where the browser displays it;
-- whether `*.wargames.host`, `*.wargames.uk`, `*.wargames.localhost`, and `solder.wargames.localhost` are present while `*.wargames.hosting` is absent;
+- whether `*.wargames.host`, `*.wargames.uk`, `*.wargames.localhost`, and `solder.wargames.localhost` are present while retired Wargames production domains are absent;
 - whether Technic access remains limited to manage versions pages;
 - whether the workflow fell back safely when a page, payload, or permission was missing;
 - whether the user saw a visible confirmation before any Technic form submission.

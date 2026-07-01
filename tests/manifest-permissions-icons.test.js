@@ -21,6 +21,7 @@ const expectedTechnicMatches = [
   'https://www.technicpack.net/dashboard/modpack/*/versions'
 ];
 const expectedHostPermissions = [...expectedWargamesMatches, ...expectedTechnicMatches];
+const retiredWargamesDomain = ['wargames', 'hosting'].join('.');
 
 function readManifest(target, baseDir = 'manifests') {
   const file = baseDir === 'manifests'
@@ -39,15 +40,34 @@ function getPngSize(file) {
   };
 }
 
-test('Patch 005 manifests use corrected Wargames host permissions and no wargames.hosting domain', () => {
+test('Patch 005 manifests use corrected Wargames host permissions and omit retired domains', () => {
   for (const target of targets) {
     const manifest = readManifest(target);
     assert.deepEqual(manifest.host_permissions, expectedHostPermissions);
-    assert.equal(JSON.stringify(manifest).includes('wargames.hosting'), false);
+    assert.equal(JSON.stringify(manifest).includes(retiredWargamesDomain), false);
     assert.ok(manifest.host_permissions.includes('https://*.wargames.host/*'));
     assert.ok(manifest.host_permissions.includes('https://*.wargames.uk/*'));
     assert.ok(manifest.host_permissions.includes('https://*.wargames.localhost/*'));
     assert.ok(manifest.host_permissions.includes('https://solder.wargames.localhost/*'));
+  }
+});
+
+
+
+test('Patch 005 docs and source files do not preserve retired Wargames domains', () => {
+  const filesToCheck = [
+    'README.md',
+    'docs/architecture.md',
+    'docs/browser-support.md',
+    'docs/local-extension-testing.md',
+    'manifests/manifest.chromium.json',
+    'manifests/manifest.firefox.json'
+  ];
+
+  for (const relativeFile of filesToCheck) {
+    const file = path.join(root, relativeFile);
+    const text = fs.readFileSync(file, 'utf8');
+    assert.equal(text.includes(retiredWargamesDomain), false, `${relativeFile} contains retired Wargames domain`);
   }
 });
 
@@ -104,7 +124,7 @@ test('Patch 005 build copies icon files and corrected manifests into both browse
     const builtManifest = readManifest(target, 'dist');
     assert.deepEqual(builtManifest.icons, iconEntries);
     assert.deepEqual(builtManifest.action.default_icon, iconEntries);
-    assert.equal(JSON.stringify(builtManifest).includes('wargames.hosting'), false);
+    assert.equal(JSON.stringify(builtManifest).includes(retiredWargamesDomain), false);
     assert.equal(Boolean(builtManifest.permissions?.includes('tabs')), false);
     for (const size of iconSizes) {
       const file = path.join(root, 'dist', target, 'icons', `icon-${size}.png`);

@@ -39,6 +39,6 @@ Host permissions should be limited to:
 - `https://www.technicpack.net/modpack/edit/*/versions`;
 - `https://www.technicpack.net/dashboard/modpack/*/versions`.
 
-Avoid broad `<all_urls>`, `https://*/*`, `http://*/*`, or `*://*/*` permissions. The old `https://*.wargames.hosting/*` pattern should not be reintroduced. The extension should not request the `tabs` permission unless a future patch proves it is required and documents why.
+Avoid broad `<all_urls>`, `https://*/*`, `http://*/*`, or `*://*/*` permissions. Retired Wargames production host patterns should not be reintroduced. The extension should not request the `tabs` permission unless a future patch proves it is required and documents why.
 
 A documentation/process-only patch must not change browser permissions, host permissions, or content-script match patterns.
