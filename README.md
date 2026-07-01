@@ -121,7 +121,7 @@ Planned browser targets:
 
 Chrome, Edge, and Opera GX all use the Chromium build. Firefox uses the Firefox build. Opera GX is treated as a Chromium-family target unless testing shows a browser-specific issue.
 
-Manifest host access is intentionally limited to local Wargames development domains, the Wargames-owned `*.wargames.host` and `*.wargames.uk` domains, and the two supported Technic manage versions URL patterns. The old `*.wargames.hosting` domain is not part of the extension manifests. The extension also ships Wargames icon assets in each browser build and does not request the `tabs` permission.
+Manifest host access is intentionally limited to local Wargames development domains, the Wargames-owned `*.wargames.host` and `*.wargames.uk` domains, and the two supported Technic manage versions URL patterns. No retired Wargames production domain should appear in source files, manifests, or built extension packages. The extension also ships Wargames icon assets in each browser build and does not request the `tabs` permission.
 
 See [`docs/browser-support.md`](docs/browser-support.md), [`docs/local-extension-testing.md`](docs/local-extension-testing.md), and [`docs/local-e2e-solder-handoff-testing.md`](docs/local-e2e-solder-handoff-testing.md) for local loading and end-to-end Solder handoff test notes.
 
