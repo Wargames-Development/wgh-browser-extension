@@ -95,14 +95,16 @@ The project is intended to use one shared WebExtension-style codebase with brows
 
 Planned browser targets:
 
-| Browser         | Target           |
-| --------------- | ---------------- |
-| Google Chrome   | Chromium package |
-| Microsoft Edge  | Chromium package |
-| Opera GX        | Chromium package |
-| Mozilla Firefox | Firefox package  |
+| Browser         | Target           | Local build output |
+| --------------- | ---------------- | ------------------ |
+| Google Chrome   | Chromium package | `dist/chromium/`   |
+| Microsoft Edge  | Chromium package | `dist/chromium/`   |
+| Opera GX        | Chromium package | `dist/chromium/`   |
+| Mozilla Firefox | Firefox package  | `dist/firefox/`    |
 
-Opera GX is treated as a Chromium-family target unless testing shows a browser-specific issue.
+Chrome, Edge, and Opera GX all use the Chromium build. Firefox uses the Firefox build. Opera GX is treated as a Chromium-family target unless testing shows a browser-specific issue.
+
+See [`docs/browser-support.md`](docs/browser-support.md) and [`docs/local-extension-testing.md`](docs/local-extension-testing.md) for local loading instructions.
 
 ---
 
@@ -297,6 +299,8 @@ npm test
 ```
 
 Generated browser packages are written to `dist/`.
+
+Local browser loading instructions are documented in [`docs/local-extension-testing.md`](docs/local-extension-testing.md). Repository hygiene and patch packaging rules are documented in [`docs/repository-hygiene.md`](docs/repository-hygiene.md).
 
 ---
 

@@ -1,7 +1,36 @@
+# Dependencies
 node_modules/
+
+# Build and packaged output
 dist/
+web-ext-artifacts/
 *.zip
-.DS_Store
+*.crx
+*.xpi
+*.pem
+*.tgz
+
+# Local configuration and secrets
 .env
 .env.*
 !.env.example
+*.local
+
+# Logs and test/debug output
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+.nyc_output/
+
+# Editor/OS metadata
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+__MACOSX/
+.vscode/
+.idea/
+*.swp
+*.swo

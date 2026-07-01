@@ -1,0 +1,97 @@
+name: Implementation task
+description: Track a focused implementation patch with clear scope, safety boundaries, and validation.
+title: "[Task]: "
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for implementation-sized work that should be patchable, reviewable, and validated before merge.
+
+        Do not include Technic passwords, Technic cookies, Technic session tokens, Technic 2FA data, Wargames internal API tokens, or screenshots/logs containing private account/session data.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should this task accomplish?
+      placeholder: "Add local testing documentation for Chromium and Firefox extension builds."
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope
+      description: List the files, behaviours, or docs that should change.
+      placeholder: |
+        - Add docs/local-extension-testing.md
+        - Link the guide from README.md
+        - Do not change runtime permissions
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: List boundaries that must not be crossed in this task.
+      placeholder: |
+        - Do not implement Technic form filling
+        - Do not implement future update publishing
+        - Do not add browser permissions
+    validations:
+      required: true
+  - type: dropdown
+    id: workflow
+    attributes:
+      label: Related workflow
+      options:
+        - Repository process / documentation
+        - Wargames job handoff
+        - Technic changelog job validation
+        - Technic changelog form fill
+        - User confirmation and safe failure states
+        - Local end-to-end Solder handoff notes
+        - Future update publisher boundary
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety-boundaries
+    attributes:
+      label: Safety boundaries
+      description: Confirm any implementation stays inside the approved extension safety model.
+      options:
+        - label: Does not store Technic usernames, passwords, cookies, session tokens, or 2FA material.
+          required: true
+        - label: Does not store Wargames internal API tokens.
+          required: true
+        - label: Does not bypass Technic login, 2FA, CAPTCHA, permissions, or anti-abuse systems.
+          required: true
+        - label: Does not submit third-party forms silently.
+          required: true
+        - label: Does not claim official Technic Platform API posting support.
+          required: true
+        - label: Keeps manual copy/export as a fallback where the workflow touches Technic pages.
+          required: true
+  - type: checkboxes
+    id: browser-permissions
+    attributes:
+      label: Browser permissions
+      options:
+        - label: This task does not add new browser permissions or host permissions.
+        - label: This task changes permissions and the reason is documented in the issue and pull request.
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation plan
+      description: Include automated and manual validation commands or explain why they do not apply.
+      placeholder: |
+        npm install
+        npm test
+        npm run build
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: Add references, screenshots, or logs only after redacting sensitive data.
