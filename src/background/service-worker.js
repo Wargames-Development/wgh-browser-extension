@@ -334,6 +334,20 @@
     }
   }
 
+
+  function createConfirmationId() {
+    try {
+      if (globalThis.crypto?.getRandomValues && typeof Uint8Array === 'function') {
+        const bytes = new Uint8Array(16);
+        globalThis.crypto.getRandomValues(bytes);
+        return `wgh-confirm-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+      }
+    } catch (_) {
+      // Fall through to a non-secret compatibility identifier.
+    }
+    return `wgh-confirm-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`;
+  }
+
   async function claimAndOpenTechnicJob(message) {
     cleanupExpiredPendingTabs();
     const start = validateStartMessage(message);
@@ -367,11 +381,19 @@
       apiBaseUrl,
       jobUuid,
       jobToken,
+      confirmationId: createConfirmationId(),
       preview: claimValidation.value.preview,
       createdAt: Date.now()
     });
 
     return { ok: true, tabId: tab.id };
+  }
+
+  async function reportComplete(data) {
+    return postJson(buildEndpoint(data.apiBaseUrl, '/internal/technic-extension-jobs/complete'), {
+      job_uuid: data.jobUuid,
+      job_token: data.jobToken
+    });
   }
 
   async function reportFail(data, reason) {
@@ -396,10 +418,22 @@
     }
 
     if (message.type === MESSAGE_TECHNIC_JOB_COMPLETED) {
-      sendResponse({
-        ok: false,
-        message: 'Completion reporting is disabled until user-confirmed Technic form submission is implemented.'
-      });
+      const tabId = sender?.tab?.id;
+      const data = pendingTabs.get(tabId);
+      if (!data) {
+        sendResponse({ ok: false, message: 'No pending WGH Technic job was found for this tab.' });
+        return true;
+      }
+      if (message.confirmationId !== data.confirmationId || message.userConfirmed !== true || message.submissionAttempted !== true) {
+        sendResponse({ ok: false, message: 'Technic completion reporting requires the explicit user-confirmed form submission step.' });
+        return true;
+      }
+      reportComplete(data)
+        .then(() => {
+          pendingTabs.delete(tabId);
+          sendResponse({ ok: true });
+        })
+        .catch((error) => sendResponse({ ok: false, message: publicError(error) }));
       return true;
     }
 
@@ -408,6 +442,10 @@
       const data = pendingTabs.get(tabId);
       if (!data) {
         sendResponse({ ok: false, message: 'No pending WGH Technic job was found for this tab.' });
+        return true;
+      }
+      if (message.confirmationId && message.confirmationId !== data.confirmationId) {
+        sendResponse({ ok: false, message: 'Technic failure reporting did not match the active WGH confirmation step.' });
         return true;
       }
       reportFail(data, message.reason)
@@ -432,9 +470,12 @@
     extensionApi.tabs.sendMessage(tabId, {
       type: MESSAGE_TECHNIC_JOB_PAYLOAD,
       preview: data.preview,
-      patchScope: 'job_handoff_fetch_and_validate_only',
-      formFillingImplemented: false,
-      silentSubmissionEnabled: false
+      confirmationId: data.confirmationId,
+      patchScope: 'technic_form_fill_confirmation_safety',
+      formFillingImplemented: true,
+      silentSubmissionEnabled: false,
+      completionReportingEnabled: true,
+      userConfirmationRequired: true
     }, () => {
       // The content script may not be ready on every navigation. Silence transient errors;
       // the user can retry from Wargames if the page never receives the payload.

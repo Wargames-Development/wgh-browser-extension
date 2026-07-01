@@ -33,7 +33,7 @@ Required request body:
 }
 ```
 
-The claim response should include the target Technic edit URL or enough slug metadata to derive it, plus the version number and changelog text. Patch 002 validates those values and shows a manual-copy preview; it does not fill or submit the Technic form.
+The claim response should include the target Technic edit URL or enough slug metadata to derive it, plus the version number and changelog text. Patch 003 validates those values, opens the supported Technic manage versions page, fills the detected version/changelog fields, and requires a visible user confirmation before the normal Technic form can be submitted.
 
 ## Payload requirements
 
@@ -50,7 +50,7 @@ The payload should include safety fields that confirm these boundaries.
 
 ## Patch 002 extension boundary
 
-Patch 002 implements only the extension-side job handoff foundation:
+Patch 002 implemented the extension-side job handoff foundation:
 
 - Wargames page event validation;
 - short-lived job claim calls;
@@ -59,4 +59,17 @@ Patch 002 implements only the extension-side job handoff foundation:
 - token redaction in user-facing errors;
 - safe no-op behaviour for missing, malformed, expired, unsupported, or unsafe payloads.
 
-Patch 002 intentionally does not implement Technic form filling, silent submission, credential/session storage, future update publishing, login bypass, 2FA/CAPTCHA bypass, or official Technic Platform API posting.
+## Patch 003 Technic form boundary
+
+Patch 003 adds the page-side MVP for the active `technic_changelog_post` workflow:
+
+- validates the current page is a supported Technic manage versions URL;
+- detects the normal Technic versions/changelog form;
+- fills only the version/build and changelog fields from the validated job payload;
+- shows a visible confirmation dialog before any normal Technic form submission;
+- lets the user cancel safely and restores the original field values;
+- reports completion only after the explicit confirmation step;
+- keeps manual copy/export visible as the fallback;
+- shows safe failure states for missing login, missing permissions, unsupported URLs, missing forms/fields, expired/malformed/unsupported jobs, and unsafe payloads.
+
+Patch 003 still does not implement silent submission, Technic credential/session/cookie storage, Wargames internal API token storage, server-side browser automation, future update publishing, login/2FA/CAPTCHA bypass, or any claim of official Technic Platform API posting support.

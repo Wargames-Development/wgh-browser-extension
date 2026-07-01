@@ -124,12 +124,14 @@ async function flushAsync() {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-test('announces readiness with Patch 002 safety boundaries', () => {
+test('announces readiness with Patch 003 safety boundaries', () => {
   const { state } = createHarness();
   const ready = state.dispatched.find((event) => event.type === 'wgh:browser-extension-ready');
   assert.ok(ready);
   assert.equal(JSON.stringify(ready.detail.supports), JSON.stringify(['technic_changelog_post']));
-  assert.equal(ready.detail.form_filling_implemented, false);
+  assert.equal(ready.detail.patch_scope, 'technic_form_fill_confirmation_safety');
+  assert.equal(ready.detail.form_filling_implemented, true);
+  assert.equal(ready.detail.user_confirmation_required, true);
   assert.equal(ready.detail.silent_submission_enabled, false);
 });
 

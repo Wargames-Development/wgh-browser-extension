@@ -156,7 +156,7 @@
         showPageNotice(response?.message || 'Could not start the Technic changelog handoff.', 'error');
         return;
       }
-      showPageNotice('The Wargames Technic changelog job was validated. Continue with the visible manual or later-confirmed Technic page flow.');
+      showPageNotice('The Wargames Technic changelog job was validated. The extension will open the normal Technic manage versions page and require visible confirmation before submission.');
     } catch (error) {
       showPageNotice(`Could not contact the WGH extension: ${redactSensitiveText(error?.message || String(error))}`, 'error');
     }
@@ -174,8 +174,9 @@
       extension: 'WGH Browser Extension',
       supports: [ACTIVE_JOB_TYPE],
       reserved: Array.from(RESERVED_JOB_TYPES),
-      patch_scope: 'job_handoff_fetch_and_validate_only',
-      form_filling_implemented: false,
+      patch_scope: 'technic_form_fill_confirmation_safety',
+      form_filling_implemented: true,
+      user_confirmation_required: true,
       silent_submission_enabled: false
     }
   }));

@@ -121,6 +121,8 @@ function createHarness(fetchImpl = async () => ({ ok: true, status: 200, text: a
     Set,
     Map,
     JSON,
+    Math,
+    Uint8Array,
     encodeURIComponent,
     globalThis: null
   });
@@ -166,8 +168,10 @@ test('claims a valid Solder job, opens Technic after validation, and sends only 
   state.onUpdated(42, { status: 'complete' });
   assert.equal(state.sentMessages.length, 1);
   assert.equal(state.sentMessages[0].message.type, 'WGH_TECHNIC_JOB_PAYLOAD');
-  assert.equal(state.sentMessages[0].message.formFillingImplemented, false);
+  assert.equal(state.sentMessages[0].message.formFillingImplemented, true);
   assert.equal(state.sentMessages[0].message.silentSubmissionEnabled, false);
+  assert.equal(state.sentMessages[0].message.userConfirmationRequired, true);
+  assert.match(state.sentMessages[0].message.confirmationId, /^wgh-confirm-/);
   assert.equal(state.sentMessages[0].message.preview.versionNumber, '1.2.3');
   assert.equal(state.sentMessages[0].message.preview.changelogText, 'Approved changelog text');
   assert.equal(JSON.stringify(state.sentMessages[0].message).includes(token), false);
@@ -238,7 +242,7 @@ test('rejects reserved future update-publisher jobs without opening a Technic ta
   assert.equal(state.createdTabs.length, 0);
 });
 
-test('does not report completion in Patch 002 and redacts failure reasons sent back to Solder', async () => {
+test('reports completion only after explicit confirmation and redacts failure reasons sent back to Solder', async () => {
   const state = createHarness(async (url) => {
     if (url.endsWith('/fail')) {
       return { ok: true, status: 200, text: async () => JSON.stringify({ result: { ok: true } }) };
@@ -248,12 +252,35 @@ test('does not report completion in Patch 002 and redacts failure reasons sent b
 
   await sendRuntimeMessage(state, startMessage());
 
-  const completion = await sendRuntimeMessage(state, { type: 'WGH_TECHNIC_JOB_COMPLETED' }, { tab: { id: 42 } });
-  assert.equal(completion.ok, false);
-  assert.match(completion.message, /disabled/);
+  state.onUpdated(42, { status: 'complete' });
+  const confirmationId = state.sentMessages.at(-1).message.confirmationId;
+
+  const unconfirmed = await sendRuntimeMessage(state, { type: 'WGH_TECHNIC_JOB_COMPLETED' }, { tab: { id: 42 } });
+  assert.equal(unconfirmed.ok, false);
+  assert.match(unconfirmed.message, /explicit user-confirmed/i);
   assert.equal(state.fetchCalls.some((call) => call.url.endsWith('/complete')), false);
 
-  const fail = await sendRuntimeMessage(state, { type: 'WGH_TECHNIC_JOB_FAILED', reason: `submit failed ${token}` }, { tab: { id: 42 } });
+  const completion = await sendRuntimeMessage(state, {
+    type: 'WGH_TECHNIC_JOB_COMPLETED',
+    confirmationId,
+    userConfirmed: true,
+    submissionAttempted: true
+  }, { tab: { id: 42 } });
+  assert.equal(completion.ok, true);
+  assert.equal(state.fetchCalls.at(-1).url, 'https://solder.wargames.hosting/internal/technic-extension-jobs/complete');
+  assert.deepEqual(state.fetchCalls.at(-1).body, {
+    job_uuid: 'technic-extension-job-20990701120000-abcdef123456',
+    job_token: token
+  });
+
+  await sendRuntimeMessage(state, startMessage());
+  state.onUpdated(42, { status: 'complete' });
+  const secondConfirmationId = state.sentMessages.at(-1).message.confirmationId;
+  const fail = await sendRuntimeMessage(state, {
+    type: 'WGH_TECHNIC_JOB_FAILED',
+    confirmationId: secondConfirmationId,
+    reason: `submit failed ${token}`
+  }, { tab: { id: 42 } });
   assert.equal(fail.ok, true);
   assert.equal(state.fetchCalls.at(-1).url, 'https://solder.wargames.hosting/internal/technic-extension-jobs/fail');
   assert.equal(state.fetchCalls.at(-1).body.failure_reason, 'submit failed [redacted]');
