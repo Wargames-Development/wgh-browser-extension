@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "WGH Browser Extension",
+  "version": "0.1.0",
+  "description": "User-initiated browser workflows for Wargames Hosting and Wargames Solder.",
+  "permissions": [
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://solder.wargames.localhost/*",
+    "https://*.wargames.localhost/*",
+    "https://*.wargames.hosting/*",
+    "https://www.technicpack.net/modpack/edit/*/versions",
+    "https://www.technicpack.net/dashboard/modpack/*/versions"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://solder.wargames.localhost/*",
+        "https://*.wargames.localhost/*",
+        "https://*.wargames.hosting/*"
+      ],
+      "js": [
+        "src/bridge/wargames-bridge.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.technicpack.net/modpack/edit/*/versions",
+        "https://www.technicpack.net/dashboard/modpack/*/versions"
+      ],
+      "js": [
+        "src/technic/changelog-publisher.js",
+        "src/technic/update-publisher.future.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "minimum_chrome_version": "114"
+}

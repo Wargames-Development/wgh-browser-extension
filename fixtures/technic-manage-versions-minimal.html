@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><title>Technic Manage Versions Fixture</title></head>
+  <body>
+    <form class="edit-versions-form" method="post" action="/modpack/edit/example/versions">
+      <input type="hidden" name="csrf_token" value="fixture-token">
+      <label>Version <input name="version" type="text"></label>
+      <label>Changelog <textarea name="changelog"></textarea></label>
+      <button type="submit">Update Version</button>
+    </form>
+  </body>
+</html>

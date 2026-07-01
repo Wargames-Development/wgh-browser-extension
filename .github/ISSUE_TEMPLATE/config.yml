@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security report
+    url: mailto:abuse@wargames.uk
+    about: Please report security issues privately instead of opening a public issue.
+  - name: Wargames Discord
+    url: https://discord.wargames.uk
+    about: Use Discord for general questions and discussion.
