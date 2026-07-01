@@ -2,16 +2,46 @@
   'use strict';
 
   const EVENT_NAME = 'wgh:technic-extension-job';
+  const READY_EVENT_NAME = 'wgh:browser-extension-ready';
   const MESSAGE_START_TECHNIC_JOB = 'WGH_START_TECHNIC_JOB';
-
+  const ACTIVE_JOB_TYPE = 'technic_changelog_post';
+  const RESERVED_JOB_TYPES = new Set(['technic_update_publish_future']);
   const extensionApi = globalThis.browser || globalThis.chrome;
+
+  function redactSensitiveText(value) {
+    return String(value ?? '')
+      .replace(/wtej_[A-Za-z0-9_-]{8,}/g, '[redacted]')
+      .replace(/("?job_token"?\s*[:=]\s*)"?[^"\s,}]+"?/gi, '$1"[redacted]"')
+      .replace(/("?internal_api_token"?\s*[:=]\s*)"?[^"\s,}]+"?/gi, '$1"[redacted]"');
+  }
+
+  function firstString(source, names) {
+    for (const name of names) {
+      const value = source?.[name];
+      if (typeof value === 'string' && value.trim() !== '') {
+        return value.trim();
+      }
+      if (typeof value === 'number') {
+        return String(value);
+      }
+    }
+    return '';
+  }
 
   function normalizeApiBaseUrl(value) {
     if (typeof value !== 'string') {
       return '';
     }
     const trimmed = value.trim().replace(/\/+$/, '');
-    return /^https:\/\//i.test(trimmed) ? trimmed : '';
+    if (!/^https:\/\//i.test(trimmed)) {
+      return '';
+    }
+    try {
+      const url = new URL(trimmed);
+      return url.protocol === 'https:' ? url.toString().replace(/\/+$/, '') : '';
+    } catch (_) {
+      return '';
+    }
   }
 
   function isProbablyJobUuid(value) {
@@ -22,6 +52,66 @@
     return typeof value === 'string' && /^wtej_[A-Za-z0-9_-]{20,}$/.test(value.trim());
   }
 
+  function isFutureIsoDate(value) {
+    if (typeof value !== 'string' || value.trim() === '') {
+      return false;
+    }
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) && parsed > Date.now();
+  }
+
+  function validateLaunchPayload(detail) {
+    if (!detail || typeof detail !== 'object') {
+      return { ok: false, message: 'The extension launch payload was missing.' };
+    }
+
+    const schemaVersion = detail.schema_version ?? detail.schemaVersion;
+    if (Number(schemaVersion) !== 1) {
+      return { ok: false, message: 'The extension launch payload schema version is unsupported.' };
+    }
+
+    const jobType = firstString(detail, ['job_type', 'jobType']);
+    if (jobType !== ACTIVE_JOB_TYPE) {
+      return {
+        ok: false,
+        message: RESERVED_JOB_TYPES.has(jobType)
+          ? 'That Wargames extension job type is reserved but not implemented yet.'
+          : 'This extension version only supports Technic changelog posting.'
+      };
+    }
+
+    const apiBaseUrl = normalizeApiBaseUrl(firstString(detail, [
+      'solder_base_url',
+      'solderBaseUrl',
+      'api_base_url',
+      'apiBaseUrl',
+      'apiBase'
+    ]));
+    const jobUuid = firstString(detail, ['job_uuid', 'jobUuid']);
+    const jobToken = firstString(detail, ['job_token', 'jobToken']);
+    const expiresAt = firstString(detail, ['expires_at', 'expiresAt']);
+
+    if (!apiBaseUrl || !isProbablyJobUuid(jobUuid) || !isProbablyJobToken(jobToken)) {
+      return { ok: false, message: 'The Technic extension job handoff was missing a valid Wargames URL, job UUID, or short-lived job token.' };
+    }
+
+    if (!isFutureIsoDate(expiresAt)) {
+      return { ok: false, message: 'The Technic extension job handoff is expired or missing a valid expiry time.' };
+    }
+
+    return {
+      ok: true,
+      value: {
+        type: MESSAGE_START_TECHNIC_JOB,
+        apiBaseUrl,
+        jobUuid,
+        jobToken,
+        jobType,
+        expiresAt
+      }
+    };
+  }
+
   function showPageNotice(message, level = 'info') {
     const existing = document.getElementById('wgh-extension-bridge-notice');
     if (existing) {
@@ -30,7 +120,7 @@
 
     const notice = document.createElement('div');
     notice.id = 'wgh-extension-bridge-notice';
-    notice.textContent = message;
+    notice.textContent = redactSensitiveText(message);
     notice.setAttribute('role', 'status');
     notice.style.cssText = [
       'position:fixed',
@@ -54,44 +144,39 @@
       return;
     }
 
-    const apiBaseUrl = normalizeApiBaseUrl(detail?.apiBaseUrl || detail?.api_base_url || detail?.apiBase || '');
-    const jobUuid = String(detail?.jobUuid || detail?.job_uuid || '').trim();
-    const jobToken = String(detail?.jobToken || detail?.job_token || '').trim();
-
-    if (!apiBaseUrl || !isProbablyJobUuid(jobUuid) || !isProbablyJobToken(jobToken)) {
-      showPageNotice('The Technic extension job handoff was missing a valid API base URL, job UUID, or job token.', 'error');
+    const validation = validateLaunchPayload(detail);
+    if (!validation.ok) {
+      showPageNotice(validation.message, 'error');
       return;
     }
 
     try {
-      const response = await extensionApi.runtime.sendMessage({
-        type: MESSAGE_START_TECHNIC_JOB,
-        apiBaseUrl,
-        jobUuid,
-        jobToken
-      });
-
+      const response = await extensionApi.runtime.sendMessage(validation.value);
       if (!response?.ok) {
         showPageNotice(response?.message || 'Could not start the Technic changelog handoff.', 'error');
         return;
       }
-
-      showPageNotice('Opened the Technic changelog handoff in your browser. Confirm on the Technic page before submitting.');
+      showPageNotice('The Wargames Technic changelog job was validated. Continue with the visible manual or later-confirmed Technic page flow.');
     } catch (error) {
-      showPageNotice(`Could not contact the WGH extension: ${error?.message || String(error)}`, 'error');
+      showPageNotice(`Could not contact the WGH extension: ${redactSensitiveText(error?.message || String(error))}`, 'error');
     }
   }
 
   window.addEventListener(EVENT_NAME, (event) => {
-    // This event should only be dispatched by a user action in the Wargames UI.
+    // This event should be dispatched by a user action in the Wargames UI.
+    // Invalid, expired, reserved, or malformed payloads are rejected without
+    // calling Wargames endpoints or touching Technic pages.
     startJob(event.detail || {});
   });
 
-  window.dispatchEvent(new CustomEvent('wgh:browser-extension-ready', {
+  window.dispatchEvent(new CustomEvent(READY_EVENT_NAME, {
     detail: {
       extension: 'WGH Browser Extension',
-      supports: ['technic_changelog_post'],
-      future_reserved: ['technic_update_publish_future']
+      supports: [ACTIVE_JOB_TYPE],
+      reserved: Array.from(RESERVED_JOB_TYPES),
+      patch_scope: 'job_handoff_fetch_and_validate_only',
+      form_filling_implemented: false,
+      silent_submission_enabled: false
     }
   }));
 })();

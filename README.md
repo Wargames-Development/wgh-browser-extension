@@ -6,7 +6,7 @@
 
 **Wargames Hosting Browser Extension** is a browser extension project for approved Wargames Hosting browser-assisted workflows.
 
-The first supported workflow is the **Technic Changelog Publisher**, which helps Wargames Solder users submit an approved changelog draft through the normal Technic Platform edit/version page using their own browser session.
+The first supported workflow foundation is the **Technic Changelog Publisher** handoff, which validates a short-lived Wargames Solder extension job and prepares a safe manual-copy preview. Later patches may add user-confirmed form filling, but Patch 002 deliberately does not fill or submit Technic forms.
 
 Repository: https://github.com/Wargames-Development/wgh-browser-extension
 
@@ -16,16 +16,21 @@ Repository: https://github.com/Wargames-Development/wgh-browser-extension
 
 This project is in early development.
 
-Initial scope:
+Current scope:
 
 * Build the shared browser extension foundation
 * Support Chrome, Edge, and Opera GX through a Chromium/WebExtension package
 * Support Firefox through a Firefox/WebExtension package
-* Implement the first workflow: `technic_changelog_post`
+* Receive and validate `technic_changelog_post` launch events from Wargames pages
+* Claim short-lived extension jobs from Wargames Solder using the per-job token
+* Validate the claimed payload before opening any Technic page
+* Redact short-lived job tokens in user-facing errors
 * Reserve a clean boundary for future workflows, such as a possible update publisher
 
 Not implemented yet:
 
+* Technic form filling
+* User-confirmed Technic form submission
 * Full Technic update publishing
 * Server-side Technic automation
 * Any official Technic Platform API posting flow
@@ -36,19 +41,18 @@ Not implemented yet:
 
 The first supported workflow assists with Technic Platform changelog posting.
 
-The expected flow is:
+The Patch 002 flow is:
 
 1. A user reviews or approves a changelog draft in Wargames Solder.
 2. Wargames Solder creates a short-lived extension job.
-3. The user launches the browser extension flow.
-4. The extension opens the user’s normal Technic Platform edit/version page.
-5. The user must already be logged into Technic in their own browser.
-6. The extension fills the version number and changelog fields.
-7. The extension shows a visible confirmation step.
-8. The user confirms before anything is submitted.
-9. The normal Technic form is submitted through the user’s own browser session.
+3. A Wargames page dispatches a user-initiated extension event.
+4. The extension validates the event payload, job type, expiry, UUID, and short-lived token format.
+5. The extension claims the job from Wargames Solder with the per-job token.
+6. The extension validates the claimed payload and rejects missing, malformed, expired, unsupported, or unsafe payloads.
+7. The extension opens the supported Technic manage versions page only after validation.
+8. The Technic content script shows a safe manual-copy preview only.
 
-This is an assisted browser workflow, not a backend Technic publishing API.
+Technic form filling and form submission are intentionally not implemented in Patch 002.
 
 ---
 
@@ -112,16 +116,18 @@ See [`docs/browser-support.md`](docs/browser-support.md) and [`docs/local-extens
 
 ### `technic_changelog_post`
 
-Status: initial active workflow
+Status: active handoff foundation
 
-Purpose:
+Current Patch 002 purpose:
 
-* Take an approved Wargames Solder changelog draft
-* Open the relevant Technic Platform edit/version page
-* Fill the build/version number
-* Fill the changelog text
-* Ask the user to confirm
-* Submit the normal Technic form only after confirmation
+* Receive a Wargames page launch event
+* Validate the short-lived extension job handoff payload
+* Claim the job from Wargames Solder
+* Validate job type, expiry, Technic target, version number, changelog text, and safety boundaries
+* Open the relevant Technic Platform edit/version page only after validation
+* Show a safe manual-copy preview without filling or submitting the Technic form
+
+Later workflow patches may add user-confirmed form filling and submission after separate review.
 
 ### `technic_update_publish_future`
 
@@ -151,10 +157,12 @@ The extension side owns:
 
 * Browser permissions
 * Browser packaging
-* Page detection
-* User confirmation UI
-* Technic form filling
-* Reporting job completion or failure
+* Wargames bridge event handling
+* Extension-side job fetching
+* Job payload validation
+* Safe manual-copy preview for Patch 002
+* Future user confirmation UI and Technic form filling only after separate review
+* Reporting safe failure states, and later completion only after user-confirmed submission exists
 
 The extension must never receive the Wargames internal API token.
 

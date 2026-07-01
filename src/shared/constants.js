@@ -1,4 +1,4 @@
-// Shared constants for documentation and future bundled builds.
+// Shared constants for documentation, tests, and future bundled builds.
 // Current manifest content scripts are classic scripts, so runtime files duplicate
 // only the tiny constants they need instead of importing modules.
 
@@ -8,6 +8,7 @@ export const JOB_TYPES = Object.freeze({
 });
 
 export const WARGAMES_JOB_EVENT = 'wgh:technic-extension-job';
+export const WARGAMES_EXTENSION_READY_EVENT = 'wgh:browser-extension-ready';
 
 export const MESSAGE_TYPES = Object.freeze({
   START_TECHNIC_JOB: 'WGH_START_TECHNIC_JOB',
