@@ -7,6 +7,8 @@ The repository uses one shared source tree with browser-specific build outputs:
 - Chrome, Microsoft Edge, and Opera GX use the Chromium build.
 - Firefox uses the Firefox build.
 
+Patch 005 adds the Wargames extension icon set to both builds and corrects Wargames production host access to `https://*.wargames.host/*` and `https://*.wargames.uk/*`. The old `https://*.wargames.hosting/*` pattern should not appear in source manifests or built manifests.
+
 Manual copy/export from Wargames Solder remains the fallback path while extension-assisted workflows are being developed or reviewed. For the full local Wargames Solder to browser extension to Technic changelog test flow, see [Local End-to-End Solder Handoff Test Notes](local-e2e-solder-handoff-testing.md).
 
 ## Safety rules while testing
@@ -43,7 +45,7 @@ dist/chromium/
 dist/firefox/
 ```
 
-`dist/` is generated output and must not be committed.
+`dist/` is generated output and must not be committed. Each browser build should include the manifest, shared source files, README/privacy/security documents, and the `icons/` directory.
 
 ## Build commands
 
@@ -65,6 +67,27 @@ Build only the Firefox package:
 npm run build:firefox
 ```
 
+
+## Expected manifest scope
+
+Both Chromium and Firefox manifests should keep Wargames and Technic access narrow. Expected Wargames host patterns are:
+
+```text
+https://solder.wargames.localhost/*
+https://*.wargames.localhost/*
+https://*.wargames.host/*
+https://*.wargames.uk/*
+```
+
+Expected Technic host patterns are limited to the manage versions pages used by the current changelog workflow:
+
+```text
+https://www.technicpack.net/modpack/edit/*/versions
+https://www.technicpack.net/dashboard/modpack/*/versions
+```
+
+The extension should not request `<all_urls>`, `https://*/*`, or the old `https://*.wargames.hosting/*` pattern. Patch 005 also removes the explicit `tabs` permission; the background coordinator still creates and messages workflow tabs, but the manifest should not trigger a separate Chromium-family browsing-history warning from `tabs`.
+
 ## Chrome local load
 
 1. Run `npm run build:chromium`.
@@ -72,7 +95,7 @@ npm run build:firefox
 3. Enable **Developer mode**.
 4. Choose **Load unpacked**.
 5. Select `dist/chromium/`.
-6. Confirm the extension loads without unexpected permission prompts.
+6. Confirm the extension loads with the Wargames icon and without unexpected permission prompts. In particular, Chrome should not show a separate browsing-history warning from a `tabs` permission.
 
 ## Microsoft Edge local load
 
@@ -81,7 +104,7 @@ npm run build:firefox
 3. Enable **Developer mode**.
 4. Choose **Load unpacked**.
 5. Select `dist/chromium/`.
-6. Confirm the extension loads without unexpected permission prompts.
+6. Confirm the extension loads with the Wargames icon and without unexpected permission prompts. In particular, Edge should not show a separate browsing-history warning from a `tabs` permission.
 
 ## Opera GX local load
 
@@ -90,7 +113,7 @@ npm run build:firefox
 3. Enable **Developer mode**.
 4. Choose **Load unpacked**.
 5. Select `dist/chromium/`.
-6. Confirm the extension loads without unexpected permission prompts.
+6. Confirm the extension loads with the Wargames icon and without unexpected permission prompts. In particular, Opera GX should not show a separate browsing-history warning from a `tabs` permission.
 
 Opera GX is treated as a Chromium-family target. Record a browser-specific issue if Opera GX behaves differently from Chrome or Edge.
 
@@ -100,7 +123,7 @@ Opera GX is treated as a Chromium-family target. Record a browser-specific issue
 2. Open `about:debugging#/runtime/this-firefox`.
 3. Choose **Load Temporary Add-on**.
 4. Select `dist/firefox/manifest.json`.
-5. Confirm the extension loads without unexpected permission prompts.
+5. Confirm the extension loads with the Wargames icon and without unexpected permission prompts.
 
 Firefox temporary add-ons are removed when Firefox restarts, so repeat these steps for each new browser session.
 
@@ -114,6 +137,9 @@ For later workflow patches, record these checks without sharing secrets:
 - build target used: Chromium or Firefox;
 - whether the extension loaded cleanly;
 - whether permissions matched the expected manifest;
+- whether the Wargames icon appears in the extension list/toolbar area where the browser displays it;
+- whether `*.wargames.host`, `*.wargames.uk`, `*.wargames.localhost`, and `solder.wargames.localhost` are present while `*.wargames.hosting` is absent;
+- whether Technic access remains limited to manage versions pages;
 - whether the workflow fell back safely when a page, payload, or permission was missing;
 - whether the user saw a visible confirmation before any Technic form submission.
 

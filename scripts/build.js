@@ -44,6 +44,7 @@ for (const target of targets) {
   fs.mkdirSync(outDir, { recursive: true });
 
   copyRecursive(path.join(root, 'src'), path.join(outDir, 'src'));
+  copyRecursive(path.join(root, 'icons'), path.join(outDir, 'icons'));
   fs.copyFileSync(
     path.join(root, 'manifests', `manifest.${target}.json`),
     path.join(outDir, 'manifest.json')

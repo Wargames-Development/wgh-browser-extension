@@ -134,7 +134,7 @@ function createHarness(fetchImpl = async () => ({ ok: true, status: 200, text: a
 function startMessage(overrides = {}) {
   return {
     type: 'WGH_START_TECHNIC_JOB',
-    apiBaseUrl: 'https://solder.wargames.hosting',
+    apiBaseUrl: 'https://solder.wargames.host',
     jobUuid: 'technic-extension-job-20990701120000-abcdef123456',
     jobToken: token,
     jobType: 'technic_changelog_post',
@@ -158,7 +158,7 @@ test('claims a valid Solder job, opens Technic after validation, and sends only 
 
   assert.equal(response.ok, true);
   assert.equal(state.fetchCalls.length, 1);
-  assert.equal(state.fetchCalls[0].url, 'https://solder.wargames.hosting/internal/technic-extension-jobs/claim');
+  assert.equal(state.fetchCalls[0].url, 'https://solder.wargames.host/internal/technic-extension-jobs/claim');
   assert.deepEqual(state.fetchCalls[0].body, {
     job_uuid: 'technic-extension-job-20990701120000-abcdef123456',
     job_token: token
@@ -181,7 +181,7 @@ test('claims a valid Solder job, opens Technic after validation, and sends only 
 test('rejects bad launch payloads before contacting Solder or opening Technic', async () => {
   const state = createHarness();
   const response = await sendRuntimeMessage(state, startMessage({
-    apiBaseUrl: 'http://solder.wargames.hosting',
+    apiBaseUrl: 'http://solder.wargames.host',
     jobType: 'technic_changelog_post'
   }));
 
@@ -267,7 +267,7 @@ test('reports completion only after explicit confirmation and redacts failure re
     submissionAttempted: true
   }, { tab: { id: 42 } });
   assert.equal(completion.ok, true);
-  assert.equal(state.fetchCalls.at(-1).url, 'https://solder.wargames.hosting/internal/technic-extension-jobs/complete');
+  assert.equal(state.fetchCalls.at(-1).url, 'https://solder.wargames.host/internal/technic-extension-jobs/complete');
   assert.deepEqual(state.fetchCalls.at(-1).body, {
     job_uuid: 'technic-extension-job-20990701120000-abcdef123456',
     job_token: token
@@ -282,6 +282,6 @@ test('reports completion only after explicit confirmation and redacts failure re
     reason: `submit failed ${token}`
   }, { tab: { id: 42 } });
   assert.equal(fail.ok, true);
-  assert.equal(state.fetchCalls.at(-1).url, 'https://solder.wargames.hosting/internal/technic-extension-jobs/fail');
+  assert.equal(state.fetchCalls.at(-1).url, 'https://solder.wargames.host/internal/technic-extension-jobs/fail');
   assert.equal(state.fetchCalls.at(-1).body.failure_reason, 'submit failed [redacted]');
 });

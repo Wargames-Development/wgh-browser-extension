@@ -16,8 +16,10 @@ Wargames Solder panel
   -> background coordinator claims job from Solder with the per-job token
   -> background validates the claimed payload and safety boundaries
   -> background opens Technic manage versions page only after validation
-  -> Technic content script shows a safe manual-copy preview only in Patch 002
-  -> later patches may add user-confirmed form filling after separate review
+  -> Technic content script validates the normal manage versions form
+  -> extension fills the version/build and changelog fields
+  -> user reviews a visible confirmation dialog
+  -> normal Technic form submission starts only after explicit user confirmation
 ```
 
 ## Modules
@@ -30,7 +32,7 @@ src/bridge/wargames-bridge.js
   Runs on Wargames pages and receives user-initiated job handoff events.
 
 src/technic/changelog-publisher.js
-  Runs on Technic manage versions pages and shows a safe manual-copy preview for Patch 002. It does not fill fields or submit forms yet.
+  Runs on Technic manage versions pages, fills the expected version/build and changelog fields after payload validation, and requires visible user confirmation before normal form submission.
 
 src/technic/update-publisher.future.js
   Reserved placeholder for future update-publisher work.

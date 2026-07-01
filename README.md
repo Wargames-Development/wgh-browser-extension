@@ -29,6 +29,9 @@ Current scope:
 * Let the user cancel safely and use manual copy/export
 * Redact short-lived job tokens in user-facing errors
 * Document the local Solder to extension to Technic changelog test path
+* Keep manifest host access scoped to corrected Wargames domains and Technic manage versions pages
+* Ship Wargames extension icon assets in Chromium and Firefox builds
+* Avoid the extra `tabs` permission so local Chromium-family testing does not show an unrelated browsing-history permission warning
 * Reserve a clean boundary for future workflows, such as a possible update publisher
 
 Not implemented yet:
@@ -117,6 +120,8 @@ Planned browser targets:
 | Mozilla Firefox | Firefox package  | `dist/firefox/`    |
 
 Chrome, Edge, and Opera GX all use the Chromium build. Firefox uses the Firefox build. Opera GX is treated as a Chromium-family target unless testing shows a browser-specific issue.
+
+Manifest host access is intentionally limited to local Wargames development domains, the Wargames-owned `*.wargames.host` and `*.wargames.uk` domains, and the two supported Technic manage versions URL patterns. The old `*.wargames.hosting` domain is not part of the extension manifests. The extension also ships Wargames icon assets in each browser build and does not request the `tabs` permission.
 
 See [`docs/browser-support.md`](docs/browser-support.md), [`docs/local-extension-testing.md`](docs/local-extension-testing.md), and [`docs/local-e2e-solder-handoff-testing.md`](docs/local-e2e-solder-handoff-testing.md) for local loading and end-to-end Solder handoff test notes.
 
@@ -259,6 +264,14 @@ manifests/
   manifest.chromium.json
   manifest.firefox.json
 
+icons/
+  wargames-rounded-source.png
+  icon-16.png
+  icon-32.png
+  icon-48.png
+  icon-128.png
+  icon-256.png
+
 docs/
   architecture.md
   browser-support.md
@@ -273,6 +286,7 @@ fixtures/
 tests/
   job-contract-validation.test.js
   local-e2e-solder-handoff-docs.test.js
+  manifest-permissions-icons.test.js
   service-worker-job-flow.test.js
   technic-changelog-publisher-flow.test.js
   technic-form-selectors.test.js
@@ -355,6 +369,8 @@ Preferred test coverage:
 * Unsupported page/layout failure handling
 * Reserved future workflow rejection
 * Local E2E test documentation coverage
+* Manifest domain, permission, and icon coverage
+* Chromium and Firefox build icon-copy coverage
 
 Real browser testing should be done manually against test accounts/pages where appropriate.
 
