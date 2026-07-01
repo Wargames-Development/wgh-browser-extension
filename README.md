@@ -6,7 +6,7 @@
 
 **Wargames Hosting Browser Extension** is a browser extension project for approved Wargames Hosting browser-assisted workflows.
 
-The first supported workflow foundation is the **Technic Changelog Publisher** handoff, which validates a short-lived Wargames Solder extension job and prepares a safe manual-copy preview. Later patches may add user-confirmed form filling, but Patch 002 deliberately does not fill or submit Technic forms.
+The first active workflow is the **Technic Changelog Publisher**, which helps a Wargames Solder user take a reviewed changelog draft, open the normal Technic Platform manage versions page in their own browser session, fill the version/changelog fields, and submit only after a visible user confirmation.
 
 Repository: https://github.com/Wargames-Development/wgh-browser-extension
 
@@ -14,7 +14,7 @@ Repository: https://github.com/Wargames-Development/wgh-browser-extension
 
 ## Project Status
 
-This project is in early development.
+This project is in early MVP development.
 
 Current scope:
 
@@ -23,14 +23,18 @@ Current scope:
 * Support Firefox through a Firefox/WebExtension package
 * Receive and validate `technic_changelog_post` launch events from Wargames pages
 * Claim short-lived extension jobs from Wargames Solder using the per-job token
-* Validate the claimed payload before opening any Technic page
+* Validate claimed job payloads before opening any Technic page
+* Fill the normal Technic manage versions form after validation
+* Show a visible confirmation step before normal form submission
+* Let the user cancel safely and use manual copy/export
 * Redact short-lived job tokens in user-facing errors
+* Document the local Solder to extension to Technic changelog test path
 * Reserve a clean boundary for future workflows, such as a possible update publisher
 
 Not implemented yet:
 
-* Technic form filling
-* User-confirmed Technic form submission
+* Full browser-store publishing workflow
+* Automated GitHub release packaging
 * Full Technic update publishing
 * Server-side Technic automation
 * Any official Technic Platform API posting flow
@@ -41,7 +45,7 @@ Not implemented yet:
 
 The first supported workflow assists with Technic Platform changelog posting.
 
-The Patch 002 flow is:
+The current `technic_changelog_post` flow is:
 
 1. A user reviews or approves a changelog draft in Wargames Solder.
 2. Wargames Solder creates a short-lived extension job.
@@ -50,9 +54,12 @@ The Patch 002 flow is:
 5. The extension claims the job from Wargames Solder with the per-job token.
 6. The extension validates the claimed payload and rejects missing, malformed, expired, unsupported, or unsafe payloads.
 7. The extension opens the supported Technic manage versions page only after validation.
-8. The Technic content script shows a safe manual-copy preview only.
+8. The Technic content script validates the page and normal changelog form.
+9. The extension fills the version/build and changelog fields.
+10. The extension shows a visible confirmation dialog.
+11. The user can cancel and restore the original field values, or explicitly start the normal Technic form submission.
 
-Technic form filling and form submission are intentionally not implemented in Patch 002.
+Completion reporting means the extension reached the user-confirmed submission-start step. It does **not** prove final Technic server-side acceptance after page navigation.
 
 ---
 
@@ -65,6 +72,7 @@ This extension does **not**:
 * Store Technic cookies
 * Store Technic session tokens
 * Store Technic 2FA material
+* Store Wargames internal API tokens
 * Bypass Technic login
 * Bypass 2FA
 * Bypass CAPTCHA
@@ -72,6 +80,7 @@ This extension does **not**:
 * Bypass anti-abuse systems
 * Run server-side browser automation for user Technic accounts
 * Claim official Technic Platform API posting support
+* Implement future Technic update publishing
 
 Wargames Solder handles launcher build delivery through Solder-compatible systems. Technic Platform changelog entry remains manual by default, with this extension acting only as an optional user-confirmed convenience workflow.
 
@@ -88,6 +97,7 @@ A browser extension allows the workflow to stay user-controlled:
 * Wargames does not collect third-party login details
 * The extension can fill the normal Technic form without handling passwords or cookies
 * The user can review the fields before submitting
+* The user can cancel and use manual copy/export instead
 
 Manual copy/export must always remain available as a fallback.
 
@@ -108,7 +118,7 @@ Planned browser targets:
 
 Chrome, Edge, and Opera GX all use the Chromium build. Firefox uses the Firefox build. Opera GX is treated as a Chromium-family target unless testing shows a browser-specific issue.
 
-See [`docs/browser-support.md`](docs/browser-support.md) and [`docs/local-extension-testing.md`](docs/local-extension-testing.md) for local loading instructions.
+See [`docs/browser-support.md`](docs/browser-support.md), [`docs/local-extension-testing.md`](docs/local-extension-testing.md), and [`docs/local-e2e-solder-handoff-testing.md`](docs/local-e2e-solder-handoff-testing.md) for local loading and end-to-end Solder handoff test notes.
 
 ---
 
@@ -116,18 +126,20 @@ See [`docs/browser-support.md`](docs/browser-support.md) and [`docs/local-extens
 
 ### `technic_changelog_post`
 
-Status: active handoff foundation
+Status: active MVP workflow
 
-Current Patch 002 purpose:
+Current purpose:
 
 * Receive a Wargames page launch event
 * Validate the short-lived extension job handoff payload
 * Claim the job from Wargames Solder
 * Validate job type, expiry, Technic target, version number, changelog text, and safety boundaries
 * Open the relevant Technic Platform edit/version page only after validation
-* Show a safe manual-copy preview without filling or submitting the Technic form
-
-Later workflow patches may add user-confirmed form filling and submission after separate review.
+* Fill only the expected version/build and changelog fields
+* Require visible user confirmation before normal Technic form submission
+* Allow cancellation and restore original field values
+* Show safe failure states for unsupported URLs, missing forms, missing fields, login/permission problems, expired jobs, malformed jobs, and unsafe payloads
+* Keep manual copy/export as the fallback path
 
 ### `technic_update_publish_future`
 
@@ -160,9 +172,11 @@ The extension side owns:
 * Wargames bridge event handling
 * Extension-side job fetching
 * Job payload validation
-* Safe manual-copy preview for Patch 002
-* Future user confirmation UI and Technic form filling only after separate review
-* Reporting safe failure states, and later completion only after user-confirmed submission exists
+* Safe Technic page/form detection
+* User confirmation UI
+* User-confirmed normal Technic form submission
+* Safe failure states
+* Completion reporting only after the user-confirmed submission-start step
 
 The extension must never receive the Wargames internal API token.
 
@@ -232,7 +246,9 @@ src/
 
   shared/
     constants.js
+    job-contract.js
     messaging.js
+    redaction.js
     validation.js
 
   technic/
@@ -246,13 +262,22 @@ manifests/
 docs/
   architecture.md
   browser-support.md
+  local-e2e-solder-handoff-testing.md
+  local-extension-testing.md
+  repository-hygiene.md
   solder-contract.md
 
 fixtures/
   technic-manage-versions-minimal.html
 
 tests/
+  job-contract-validation.test.js
+  local-e2e-solder-handoff-docs.test.js
+  service-worker-job-flow.test.js
+  technic-changelog-publisher-flow.test.js
   technic-form-selectors.test.js
+  technic-publisher-boundary.test.js
+  wargames-bridge-handoff.test.js
 
 scripts/
   build.js
@@ -288,10 +313,10 @@ git clone https://github.com/Wargames-Development/wgh-browser-extension.git
 cd wgh-browser-extension
 ```
 
-Install dependencies:
+Install dependencies from the lockfile:
 
 ```bash
-npm install
+npm ci
 ```
 
 Build the extension packages:
@@ -308,7 +333,7 @@ npm test
 
 Generated browser packages are written to `dist/`.
 
-Local browser loading instructions are documented in [`docs/local-extension-testing.md`](docs/local-extension-testing.md). Repository hygiene and patch packaging rules are documented in [`docs/repository-hygiene.md`](docs/repository-hygiene.md).
+Local browser loading instructions are documented in [`docs/local-extension-testing.md`](docs/local-extension-testing.md). Repository hygiene and patch packaging rules are documented in [`docs/repository-hygiene.md`](docs/repository-hygiene.md). The local Wargames Solder handoff test flow is documented in [`docs/local-e2e-solder-handoff-testing.md`](docs/local-e2e-solder-handoff-testing.md).
 
 ---
 
@@ -325,10 +350,23 @@ Preferred test coverage:
 * Technic page fixture parsing
 * Version field detection
 * Changelog field detection
+* User confirmation behaviour
+* Cancellation and original field restoration
 * Unsupported page/layout failure handling
 * Reserved future workflow rejection
+* Local E2E test documentation coverage
 
 Real browser testing should be done manually against test accounts/pages where appropriate.
+
+---
+
+## Release Packaging
+
+Automated release packaging is not implemented yet.
+
+Future release work should use a controlled, manual GitHub Actions workflow that builds Chromium and Firefox packages from a tagged source state, creates checksums, and attaches the generated packages to a GitHub Release or prerelease.
+
+Release work should be handled in a separate patch/issue from the local E2E handoff notes so release permissions, versioning, and packaging rules can be reviewed independently.
 
 ---
 

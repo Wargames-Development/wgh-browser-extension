@@ -7,7 +7,7 @@ The repository uses one shared source tree with browser-specific build outputs:
 - Chrome, Microsoft Edge, and Opera GX use the Chromium build.
 - Firefox uses the Firefox build.
 
-Manual copy/export from Wargames Solder remains the fallback path while extension-assisted workflows are being developed or reviewed.
+Manual copy/export from Wargames Solder remains the fallback path while extension-assisted workflows are being developed or reviewed. For the full local Wargames Solder to browser extension to Technic changelog test flow, see [Local End-to-End Solder Handoff Test Notes](local-e2e-solder-handoff-testing.md).
 
 ## Safety rules while testing
 
