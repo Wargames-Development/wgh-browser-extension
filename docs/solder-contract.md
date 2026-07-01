@@ -73,3 +73,22 @@ Patch 003 adds the page-side MVP for the active `technic_changelog_post` workflo
 - shows safe failure states for missing login, missing permissions, unsupported URLs, missing forms/fields, expired/malformed/unsupported jobs, and unsafe payloads.
 
 Patch 003 still does not implement silent submission, Technic credential/session/cookie storage, Wargames internal API token storage, server-side browser automation, future update publishing, login/2FA/CAPTCHA bypass, or any claim of official Technic Platform API posting support.
+
+## Patch 004 local end-to-end test notes
+
+Patch 004 adds documentation and validation coverage for the local Wargames Solder to browser extension to Technic changelog handoff test flow.
+
+See [`local-e2e-solder-handoff-testing.md`](local-e2e-solder-handoff-testing.md) for:
+
+- local browser build/load steps for Chrome, Edge, Opera GX, and Firefox;
+- local Wargames Solder stack preparation;
+- creating or locating `technic_changelog_post` extension jobs;
+- triggering the `wgh:technic-extension-job` page handoff event;
+- checking filled Technic version/changelog fields;
+- testing cancellation and safe failure states;
+- redaction rules for job tokens, Technic session data, 2FA data, and Wargames internal API tokens;
+- the limitation that completion means user-confirmed submission started, not guaranteed final Technic server-side acceptance after navigation;
+- manual copy/export fallback steps.
+
+Patch 004 does not change runtime behaviour, expand browser permissions, implement the future update publisher, store credentials/sessions/tokens, add server-side browser automation, or claim official Technic Platform API posting support.
+
