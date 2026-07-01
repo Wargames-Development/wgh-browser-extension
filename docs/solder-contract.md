@@ -33,7 +33,7 @@ Required request body:
 }
 ```
 
-The claim response should include the target Technic edit URL or enough slug metadata to derive it, plus the version number and changelog text.
+The claim response should include the target Technic edit URL or enough slug metadata to derive it, plus the version number and changelog text. Patch 002 validates those values and shows a manual-copy preview; it does not fill or submit the Technic form.
 
 ## Payload requirements
 
@@ -46,3 +46,17 @@ The job payload must not include:
 - 2FA material.
 
 The payload should include safety fields that confirm these boundaries.
+
+
+## Patch 002 extension boundary
+
+Patch 002 implements only the extension-side job handoff foundation:
+
+- Wargames page event validation;
+- short-lived job claim calls;
+- claimed payload validation;
+- unsupported/reserved job rejection;
+- token redaction in user-facing errors;
+- safe no-op behaviour for missing, malformed, expired, unsupported, or unsafe payloads.
+
+Patch 002 intentionally does not implement Technic form filling, silent submission, credential/session storage, future update publishing, login bypass, 2FA/CAPTCHA bypass, or official Technic Platform API posting.
