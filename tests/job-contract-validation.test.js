@@ -11,7 +11,7 @@ const token = 'wtej_abcdefghijklmnopqrstuvwxyz1234567890';
 function validLaunch(overrides = {}) {
   return {
     schema_version: 1,
-    solder_base_url: 'https://solder.wargames.hosting/',
+    solder_base_url: 'https://solder.wargames.host/',
     job_uuid: 'technic-extension-job-20260701120000-abcdef123456',
     job_token: token,
     job_type: 'technic_changelog_post',
@@ -78,7 +78,7 @@ function validClaim(overrides = {}) {
 test('validates Wargames launch payloads from the Solder handoff contract', () => {
   const result = validateLaunchPayload(validLaunch(), now);
   assert.equal(result.ok, true);
-  assert.equal(result.value.apiBaseUrl, 'https://solder.wargames.hosting');
+  assert.equal(result.value.apiBaseUrl, 'https://solder.wargames.host');
   assert.equal(result.value.jobType, 'technic_changelog_post');
   assert.equal(result.value.jobToken, token);
 });
@@ -88,7 +88,7 @@ test('rejects malformed, expired, and unsupported launch payloads before fetch',
   assert.equal(validateLaunchPayload(validLaunch({ schema_version: 2 }), now).code, 'invalid_schema_version');
   assert.equal(validateLaunchPayload(validLaunch({ expires_at: '2026-07-01T11:59:00Z' }), now).code, 'job_expired');
   assert.equal(validateLaunchPayload(validLaunch({ job_type: 'technic_update_publish_future' }), now).code, 'reserved_job_type');
-  assert.equal(validateLaunchPayload(validLaunch({ solder_base_url: 'http://solder.wargames.hosting' }), now).code, 'invalid_launch_fields');
+  assert.equal(validateLaunchPayload(validLaunch({ solder_base_url: 'http://solder.wargames.host' }), now).code, 'invalid_launch_fields');
 });
 
 test('validates claimed Solder job payloads and derives safe Technic targets', () => {

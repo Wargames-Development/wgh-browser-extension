@@ -3,13 +3,11 @@
   "name": "WGH Browser Extension",
   "version": "0.1.0",
   "description": "User-initiated browser workflows for Wargames Hosting and Wargames Solder.",
-  "permissions": [
-    "tabs"
-  ],
   "host_permissions": [
     "https://solder.wargames.localhost/*",
     "https://*.wargames.localhost/*",
-    "https://*.wargames.hosting/*",
+    "https://*.wargames.host/*",
+    "https://*.wargames.uk/*",
     "https://www.technicpack.net/modpack/edit/*/versions",
     "https://www.technicpack.net/dashboard/modpack/*/versions"
   ],
@@ -23,7 +21,8 @@
       "matches": [
         "https://solder.wargames.localhost/*",
         "https://*.wargames.localhost/*",
-        "https://*.wargames.hosting/*"
+        "https://*.wargames.host/*",
+        "https://*.wargames.uk/*"
       ],
       "js": [
         "src/bridge/wargames-bridge.js"
@@ -44,8 +43,25 @@
   ],
   "browser_specific_settings": {
     "gecko": {
-      "id": "wgh-browser-extension@wargames.hosting",
+      "id": "wgh-browser-extension@wargames.host",
       "strict_min_version": "109.0"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png",
+    "256": "icons/icon-256.png"
+  },
+  "action": {
+    "default_title": "WGH Browser Extension",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png",
+      "256": "icons/icon-256.png"
     }
   }
 }

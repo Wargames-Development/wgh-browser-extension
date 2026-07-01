@@ -108,7 +108,7 @@ function createHarness(sendMessageImpl = async () => ({ ok: true })) {
 function validDetail(overrides = {}) {
   return {
     schema_version: 1,
-    solder_base_url: 'https://solder.wargames.hosting/',
+    solder_base_url: 'https://solder.wargames.host/',
     job_uuid: 'technic-extension-job-20990701120000-abcdef123456',
     job_token: token,
     job_type: 'technic_changelog_post',
@@ -143,7 +143,7 @@ test('forwards valid user-initiated Wargames handoff events to the background sc
   assert.equal(state.sentMessages.length, 1);
   assert.equal(JSON.stringify(state.sentMessages[0]), JSON.stringify({
     type: 'WGH_START_TECHNIC_JOB',
-    apiBaseUrl: 'https://solder.wargames.hosting',
+    apiBaseUrl: 'https://solder.wargames.host',
     jobUuid: 'technic-extension-job-20990701120000-abcdef123456',
     jobToken: token,
     jobType: 'technic_changelog_post',
@@ -156,7 +156,7 @@ test('rejects malformed, expired, and reserved handoff events without sending to
 
   window.dispatchEvent(new CustomEvent('wgh:technic-extension-job', { detail: validDetail({ job_type: 'technic_update_publish_future' }) }));
   window.dispatchEvent(new CustomEvent('wgh:technic-extension-job', { detail: validDetail({ expires_at: '2020-01-01T00:00:00Z' }) }));
-  window.dispatchEvent(new CustomEvent('wgh:technic-extension-job', { detail: validDetail({ solder_base_url: 'http://solder.wargames.hosting' }) }));
+  window.dispatchEvent(new CustomEvent('wgh:technic-extension-job', { detail: validDetail({ solder_base_url: 'http://solder.wargames.host' }) }));
   await flushAsync();
 
   assert.equal(state.sentMessages.length, 0);

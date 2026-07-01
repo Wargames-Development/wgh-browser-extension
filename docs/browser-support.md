@@ -32,9 +32,13 @@ Local package artifacts are generated files and should not be committed to the r
 
 Host permissions should be limited to:
 
-- Wargames/Solder domains used for job handoff;
-- Technic manage versions pages needed for the changelog workflow.
+- `https://solder.wargames.localhost/*`;
+- `https://*.wargames.localhost/*`;
+- `https://*.wargames.host/*`;
+- `https://*.wargames.uk/*`;
+- `https://www.technicpack.net/modpack/edit/*/versions`;
+- `https://www.technicpack.net/dashboard/modpack/*/versions`.
 
-Avoid broad `<all_urls>` permissions.
+Avoid broad `<all_urls>`, `https://*/*`, `http://*/*`, or `*://*/*` permissions. The old `https://*.wargames.hosting/*` pattern should not be reintroduced. The extension should not request the `tabs` permission unless a future patch proves it is required and documents why.
 
 A documentation/process-only patch must not change browser permissions, host permissions, or content-script match patterns.
