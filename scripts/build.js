@@ -7,12 +7,26 @@ const root = path.resolve(__dirname, '..');
 const requestedTarget = process.argv[2] || 'all';
 const targets = requestedTarget === 'all' ? ['chromium', 'firefox'] : [requestedTarget];
 
+const ignoredBuildEntries = new Set([
+  '.DS_Store',
+  '.AppleDouble',
+  '.LSOverride',
+  '__MACOSX'
+]);
+
+const shouldSkipBuildEntry = (entry) => entry.startsWith('._') || ignoredBuildEntries.has(entry);
+
 const copyRecursive = (src, dest) => {
+  const entry = path.basename(src);
+  if (shouldSkipBuildEntry(entry)) {
+    return;
+  }
+
   const stat = fs.statSync(src);
   if (stat.isDirectory()) {
     fs.mkdirSync(dest, { recursive: true });
-    for (const entry of fs.readdirSync(src)) {
-      copyRecursive(path.join(src, entry), path.join(dest, entry));
+    for (const childEntry of fs.readdirSync(src)) {
+      copyRecursive(path.join(src, childEntry), path.join(dest, childEntry));
     }
     return;
   }
