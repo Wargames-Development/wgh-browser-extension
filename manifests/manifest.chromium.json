@@ -8,8 +8,7 @@
     "https://*.wargames.localhost/*",
     "https://*.wargames.host/*",
     "https://*.wargames.uk/*",
-    "https://www.technicpack.net/modpack/edit/*/versions",
-    "https://www.technicpack.net/dashboard/modpack/*/versions"
+    "https://www.technicpack.net/modpack/edit/*/versions"
   ],
   "background": {
     "service_worker": "src/background/service-worker.js"
@@ -29,8 +28,7 @@
     },
     {
       "matches": [
-        "https://www.technicpack.net/modpack/edit/*/versions",
-        "https://www.technicpack.net/dashboard/modpack/*/versions"
+        "https://www.technicpack.net/modpack/edit/*/versions"
       ],
       "js": [
         "src/technic/changelog-publisher.js",

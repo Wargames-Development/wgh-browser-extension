@@ -50,7 +50,7 @@ function validClaim(overrides = {}) {
         },
         target: {
           technic_platform_slug: 'example-pack',
-          technic_platform_edit_versions_url: 'https://www.technicpack.net/dashboard/modpack/example-pack/versions',
+          technic_platform_edit_versions_url: 'https://www.technicpack.net/modpack/edit/example-pack/versions',
           version_number: '1.2.3'
         },
         extension_payload: {
@@ -95,9 +95,51 @@ test('validates claimed Solder job payloads and derives safe Technic targets', (
   const result = validateClaimResponse(validClaim(), now);
   assert.equal(result.ok, true);
   assert.equal(result.value.jobType, 'technic_changelog_post');
-  assert.equal(result.value.technicUrl, 'https://www.technicpack.net/dashboard/modpack/example-pack/versions');
+  assert.equal(result.value.technicUrl, 'https://www.technicpack.net/modpack/edit/example-pack/versions');
   assert.equal(result.value.versionNumber, '1.2.3');
   assert.equal(result.value.changelogText, 'Approved changelog text');
+});
+
+
+
+test('normalizes a legacy Technic dashboard URL to the edit versions route without requiring dashboard permissions', () => {
+  const result = validateClaimResponse(validClaim({
+    payload: {
+      schema_version: 1,
+      job: {
+        job_uuid: 'technic-extension-job-20260701120000-abcdef123456',
+        job_type: 'technic_changelog_post',
+        status: 'created',
+        expires_at: future,
+        token_hash_exposed: false,
+        internal_api_token_exposed: false
+      },
+      target: {
+        technic_platform_slug: 'example-pack',
+        technic_platform_edit_versions_url: `https://www.technicpack.net/${['dashboard', 'modpack', 'example-pack', 'versions'].join('/')}`,
+        version_number: '1.2.3'
+      },
+      extension_payload: {
+        changelog: {
+          body: 'Approved changelog body text'
+        }
+      },
+      safety: {
+        technic_platform_api_posting_supported: false,
+        backend_technic_posting_enabled: false,
+        server_side_browser_automation_enabled: false,
+        login_bypass_enabled: false,
+        credentials_included: false,
+        session_tokens_included: false,
+        cookies_included: false,
+        user_initiated_flow_required: true,
+        user_confirmation_required_before_submit: true
+      }
+    }
+  }), now);
+  assert.equal(result.ok, true);
+  assert.equal(result.value.technicUrl, 'https://www.technicpack.net/modpack/edit/example-pack/versions');
+  assert.equal(result.value.changelogText, 'Approved changelog body text');
 });
 
 test('rejects unsafe or incomplete claimed payloads', () => {

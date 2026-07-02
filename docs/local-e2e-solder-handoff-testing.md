@@ -201,7 +201,7 @@ curl -k -sS \
       "changelog_uuid": "replace-with-local-approved-changelog-uuid"
     },
     "technic_platform_slug": "replace-with-test-technic-pack-slug",
-    "technic_platform_edit_versions_url": "https://www.technicpack.net/dashboard/modpack/replace-with-test-technic-pack-slug/versions",
+    "technic_platform_edit_versions_url": "https://www.technicpack.net/modpack/edit/replace-with-test-technic-pack-slug/versions",
     "expires_in_seconds": 900
   }' \
   "${BASE}/internal/technic-extension-jobs/create"
@@ -237,7 +237,7 @@ window.dispatchEvent(new CustomEvent('wgh:technic-extension-job', {
     job_type: 'technic_changelog_post',
     expires_at: '2099-07-01T12:15:00Z',
     technic_platform_slug: 'replace-with-test-pack-slug',
-    technic_platform_edit_versions_url: 'https://www.technicpack.net/dashboard/modpack/replace-with-test-pack-slug/versions'
+    technic_platform_edit_versions_url: 'https://www.technicpack.net/modpack/edit/replace-with-test-pack-slug/versions'
   }
 }));
 ```
