@@ -542,6 +542,18 @@
     return { ok: false, message: 'The Technic form could not be submitted safely because no normal submit control was available.' };
   }
 
+
+  function replaceActionsWithClose(actions, closeButton) {
+    for (const child of Array.from(actions?.children || [])) {
+      if (child !== closeButton) {
+        child.remove?.();
+      }
+    }
+    if (!Array.from(actions?.children || []).includes(closeButton)) {
+      actions.appendChild(closeButton);
+    }
+  }
+
   function showConfirmation(preview, formData, originalValues) {
     const wrapper = createOverlayShell(
       'Review before submitting to Technic',
@@ -590,26 +602,35 @@
       }
     );
 
+    const close = createButton(
+      'Close',
+      'cursor:pointer;border:1px solid #536683;border-radius:9px;padding:9px 11px;background:#101827;color:#fff',
+      removeOverlay
+    );
+
     const cancel = createButton(
       'Cancel / use manual copy',
       'cursor:pointer;border:1px solid #536683;border-radius:9px;padding:9px 11px;background:#17243a;color:#fff',
       async () => {
+        submit.disabled = true;
+        cancel.disabled = true;
         setFieldValue(formData.versionField, originalValues.version);
         setFieldValue(formData.changelogField, originalValues.changelog);
-        await sendRuntimeMessage({
+        const failure = await sendRuntimeMessage({
           type: MESSAGE_TECHNIC_JOB_FAILED,
           confirmationId: preview.confirmationId,
           reason: 'user_cancelled: user cancelled before Technic form submission'
         });
+        replaceActionsWithClose(actions, close);
+        if (!failure?.ok) {
+          setStatus(wrapper, failure?.message || 'Cancelled locally. Wargames could not be notified, but no Technic form was submitted. Manual copy/export remains available.', 'error');
+          return;
+        }
         setStatus(wrapper, 'Cancelled. Original Technic field values were restored and no Technic form was submitted. Manual copy/export remains available.');
       }
     );
 
-    actions.append(submit, cancel, createButton(
-      'Close',
-      'cursor:pointer;border:1px solid #536683;border-radius:9px;padding:9px 11px;background:#101827;color:#fff',
-      removeOverlay
-    ));
+    actions.append(submit, cancel, close);
     wrapper.appendChild(actions);
   }
 

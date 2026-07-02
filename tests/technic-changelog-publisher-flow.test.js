@@ -395,7 +395,7 @@ test('waits briefly for Technic forms that render after page scripts finish', as
   assert.equal(harness.state.submissions.length, 0);
 });
 
-test('cancel restores original field values and does not submit the Technic form', async () => {
+test('cancel restores original field values and switches the overlay to close-only manual fallback', async () => {
   const { state, document, form } = createHarness({ formOptions: { initialVersion: 'old-version', initialChangelog: 'old notes' } });
   const response = await sendContentMessage(state, validPayload());
   assert.equal(response.ok, true);
@@ -411,6 +411,9 @@ test('cancel restores original field values and does not submit the Technic form
   assert.equal(state.runtimeMessages.length, 1);
   assert.equal(state.runtimeMessages[0].type, 'WGH_TECHNIC_JOB_FAILED');
   assert.match(state.runtimeMessages[0].reason, /user_cancelled/);
+  assert.equal(findButtonByText(document.documentElement, 'Submit Technic form'), null);
+  assert.equal(findButtonByText(document.documentElement, 'Cancel / use manual copy'), null);
+  assert.ok(findButtonByText(document.documentElement, 'Close'));
 });
 
 test('rejects unsupported Technic URLs without changing fields', async () => {
