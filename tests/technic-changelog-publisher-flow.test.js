@@ -310,6 +310,8 @@ function createHarness({ href = 'https://www.technicpack.net/modpack/edit/exampl
     URL,
     Date,
     Promise,
+    setTimeout,
+    clearTimeout,
     String,
     Number,
     Boolean,
@@ -365,6 +367,32 @@ test('fills Technic version and changelog fields but waits for explicit confirma
     submissionAttempted: true
   }));
   assert.equal(state.submissions.length, 1);
+});
+
+test('does not mistake normal owner/contributor page text for permission denial when a form is editable', async () => {
+  const { state, form } = createHarness({ bodyText: 'Owner tools Contributor access Manage versions' });
+  const response = await sendContentMessage(state, validPayload());
+
+  assert.equal(response.ok, true);
+  assert.equal(response.code, 'technic_form_filled_confirmation_required');
+  assert.equal(form.querySelector('input[name="version"]').value, '1.2.3');
+  assert.equal(form.querySelector('textarea[name="changelog"]').value, 'Approved changelog text');
+  assert.equal(state.submissions.length, 0);
+});
+
+test('waits briefly for Technic forms that render after page scripts finish', async () => {
+  const harness = createHarness({ bodyText: 'Technic manage versions', formOptions: false });
+  setTimeout(() => {
+    harness.form = createTechnicForm(harness.document, harness.state);
+  }, 20);
+
+  const response = await sendContentMessage(harness.state, validPayload());
+
+  assert.equal(response.ok, true);
+  assert.equal(response.code, 'technic_form_filled_confirmation_required');
+  assert.equal(harness.form.querySelector('input[name="version"]').value, '1.2.3');
+  assert.equal(harness.form.querySelector('textarea[name="changelog"]').value, 'Approved changelog text');
+  assert.equal(harness.state.submissions.length, 0);
 });
 
 test('cancel restores original field values and does not submit the Technic form', async () => {
