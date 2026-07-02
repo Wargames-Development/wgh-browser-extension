@@ -153,8 +153,10 @@ export function extractClaimPreview(result) {
   const changelogText = String(getDeep(payload, [
     'extension_payload.changelog.final_changelog',
     'extension_payload.changelog.copy_text',
+    'extension_payload.changelog.body',
     'extension_payload.copy_text',
     'manual_copy_export.copy_text',
+    'job.changelog_text',
     'changelog_text'
   ]) || '').trim();
 

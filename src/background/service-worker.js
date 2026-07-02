@@ -107,9 +107,13 @@
         return '';
       }
       const path = url.pathname.replace(/\/+$/, '');
-      if (/^\/modpack\/edit\/[A-Za-z0-9-]+\/versions$/.test(path)
-        || /^\/dashboard\/modpack\/[A-Za-z0-9-]+\/versions$/.test(path)) {
-        return url.toString();
+      const editMatch = path.match(/^\/modpack\/edit\/([A-Za-z0-9-]+)\/versions$/);
+      if (editMatch) {
+        return `https://www.technicpack.net/modpack/edit/${encodeURIComponent(editMatch[1])}/versions`;
+      }
+      const dashboardMatch = path.match(/^\/dashboard\/modpack\/([A-Za-z0-9-]+)\/versions$/);
+      if (dashboardMatch) {
+        return `https://www.technicpack.net/modpack/edit/${encodeURIComponent(dashboardMatch[1])}/versions`;
       }
     } catch (_) {
       return '';
@@ -245,8 +249,10 @@
     const changelogText = String(getDeep(payload, [
       'extension_payload.changelog.final_changelog',
       'extension_payload.changelog.copy_text',
+      'extension_payload.changelog.body',
       'extension_payload.copy_text',
       'manual_copy_export.copy_text',
+      'job.changelog_text',
       'changelog_text'
     ]) || '').trim();
     return {

@@ -83,7 +83,6 @@ Expected Technic host patterns are limited to the manage versions pages used by 
 
 ```text
 https://www.technicpack.net/modpack/edit/*/versions
-https://www.technicpack.net/dashboard/modpack/*/versions
 ```
 
 The extension should not request `<all_urls>`, `https://*/*`, or any retired Wargames production host pattern. Patch 005 also removes the explicit `tabs` permission; the background coordinator still creates and messages workflow tabs, but the manifest should not trigger a separate Chromium-family browsing-history warning from `tabs`.
