@@ -9,6 +9,8 @@
   const MAX_VERSION_LENGTH = 128;
   const MAX_CHANGELOG_LENGTH = 64000;
   const SUPPORTED_PATCH_SCOPE = 'technic_form_fill_confirmation_safety';
+  const FORM_WAIT_TIMEOUT_MS = 8000;
+  const FORM_WAIT_INTERVAL_MS = 250;
 
   const TOKEN_PATTERNS = [
     /wtej_[A-Za-z0-9_-]{8,}/g,
@@ -267,7 +269,18 @@
     if (loginForm && /(log in|login|sign in|signin|password)/i.test(text)) {
       return { ok: false, code: 'technic_not_logged_in', message: 'Technic appears to be asking you to log in. Log in to Technic normally, then retry the Wargames extension job or use manual copy/export.' };
     }
-    if (/(do not have permission|don't have permission|not authorized|not authorised|permission denied|access denied|403|owner|contributor)/i.test(text)) {
+
+    const deniedPatterns = [
+      /you\s+(?:do not|don't)\s+have\s+permission/i,
+      /(?:not\s+authorized|not\s+authorised)/i,
+      /permission\s+denied/i,
+      /access\s+denied/i,
+      /error\s*403/i,
+      /403\s+(?:forbidden|unauthorized|unauthorised)/i,
+      /must\s+be\s+(?:the\s+)?(?:pack\s+)?(?:owner|contributor)/i,
+      /only\s+(?:pack\s+)?(?:owners|contributors)\s+can/i
+    ];
+    if (deniedPatterns.some((pattern) => pattern.test(text))) {
       return { ok: false, code: 'technic_permission_denied', message: 'Technic did not show an editable versions form. This usually means the current Technic account is not a pack owner or contributor. Use manual copy/export or switch to an account with pack access.' };
     }
     return { ok: true };
@@ -316,6 +329,33 @@
         submitButton: findSubmitButton(best.form)
       }
     };
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function waitForTechnicForm(timeoutMs = FORM_WAIT_TIMEOUT_MS) {
+    const startedAt = Date.now();
+    let lastResult = detectForm();
+    if (lastResult.ok) {
+      return lastResult;
+    }
+
+    while (Date.now() - startedAt < timeoutMs) {
+      await sleep(FORM_WAIT_INTERVAL_MS);
+      const result = detectForm();
+      if (result.ok) {
+        return result;
+      }
+      lastResult = result;
+      if (result.code === 'technic_not_logged_in' || result.code === 'technic_permission_denied') {
+        return result;
+      }
+    }
+
+    const access = detectAccessState();
+    return access.ok ? lastResult : access;
   }
 
   function setFieldValue(field, value) {
@@ -573,7 +613,7 @@
     wrapper.appendChild(actions);
   }
 
-  function handlePayload(message) {
+  async function handlePayload(message) {
     const normalized = normalizePreview(message);
     const preview = normalized.ok ? normalized.value : null;
     if (!normalized.ok) {
@@ -604,13 +644,7 @@
       return result;
     }
 
-    const access = detectAccessState();
-    if (!access.ok) {
-      showFailure(preview, access.code, access.message, preview.confirmationId);
-      return access;
-    }
-
-    const formResult = detectForm();
+    const formResult = await waitForTechnicForm();
     if (!formResult.ok) {
       showFailure(preview, formResult.code, formResult.message, preview.confirmationId);
       return formResult;
@@ -644,21 +678,23 @@
       return false;
     }
 
-    try {
-      const result = handlePayload(message);
-      sendResponse({
-        ok: Boolean(result.ok),
-        code: result.code,
-        message: result.message || '',
-        formFillingImplemented: result.formFillingImplemented === true,
-        silentSubmissionEnabled: false,
-        userConfirmationRequired: true
-      });
-    } catch (error) {
-      const safeMessage = redactSensitiveText(error?.message || String(error));
-      showFailure(null, 'technic_extension_error', safeMessage);
-      sendResponse({ ok: false, code: 'technic_extension_error', message: safeMessage, silentSubmissionEnabled: false });
-    }
+    (async () => {
+      try {
+        const result = await handlePayload(message);
+        sendResponse({
+          ok: Boolean(result.ok),
+          code: result.code,
+          message: result.message || '',
+          formFillingImplemented: result.formFillingImplemented === true,
+          silentSubmissionEnabled: false,
+          userConfirmationRequired: true
+        });
+      } catch (error) {
+        const safeMessage = redactSensitiveText(error?.message || String(error));
+        showFailure(null, 'technic_extension_error', safeMessage);
+        sendResponse({ ok: false, code: 'technic_extension_error', message: safeMessage, silentSubmissionEnabled: false });
+      }
+    })();
 
     return true;
   });
