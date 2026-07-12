@@ -9,6 +9,7 @@ export const JOB_TYPES = Object.freeze({
 
 export const WARGAMES_JOB_EVENT = 'wgh:technic-extension-job';
 export const WARGAMES_EXTENSION_READY_EVENT = 'wgh:browser-extension-ready';
+export const WARGAMES_EXTENSION_PROBE_EVENT = 'wgh:browser-extension-probe';
 
 export const MESSAGE_TYPES = Object.freeze({
   START_TECHNIC_JOB: 'WGH_START_TECHNIC_JOB',
