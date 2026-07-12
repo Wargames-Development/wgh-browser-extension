@@ -61,3 +61,10 @@ test('README reflects Patch 003/004 MVP status without stale Patch 002 preview w
   assert.doesNotMatch(readme, /Technic form filling and form submission are intentionally not implemented in Patch 002/);
   assert.doesNotMatch(readme, /shows a safe manual-copy preview only/);
 });
+
+test('Patch 010 documents the safe late-load extension detection probe contract', () => {
+  assert.match(e2eDoc, /wgh:browser-extension-probe/);
+  assert.match(e2eDoc, /wgh:browser-extension-ready/);
+  assert.match(e2eDoc, /does not claim or start a job/i);
+  assert.match(e2eDoc, /does not guarantee a browser-store installation or a particular extension version/i);
+});

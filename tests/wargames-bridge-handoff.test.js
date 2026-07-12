@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import { WARGAMES_EXTENSION_PROBE_EVENT, WARGAMES_EXTENSION_READY_EVENT } from '../src/shared/constants.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const bridgeSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'bridge', 'wargames-bridge.js'), 'utf8');
@@ -126,7 +127,7 @@ async function flushAsync() {
 
 test('announces readiness with Patch 003 safety boundaries', () => {
   const { state } = createHarness();
-  const ready = state.dispatched.find((event) => event.type === 'wgh:browser-extension-ready');
+  const ready = state.dispatched.find((event) => event.type === WARGAMES_EXTENSION_READY_EVENT);
   assert.ok(ready);
   assert.equal(JSON.stringify(ready.detail.supports), JSON.stringify(['technic_changelog_post']));
   assert.equal(ready.detail.patch_scope, 'technic_form_fill_confirmation_safety');
@@ -171,4 +172,24 @@ test('redacts raw job tokens from user-facing bridge errors', async () => {
   const notices = state.appended.map((item) => item.textContent).join('\n');
   assert.equal(notices.includes(token), false);
   assert.match(notices, /\[redacted\]/);
+});
+
+test('responds to explicit extension probes without starting a job or exposing private data', () => {
+  const { state, window, CustomEvent } = createHarness();
+  const initialReadyEvents = state.dispatched.filter((event) => event.type === WARGAMES_EXTENSION_READY_EVENT);
+  assert.equal(initialReadyEvents.length, 1);
+
+  window.dispatchEvent(new CustomEvent(WARGAMES_EXTENSION_PROBE_EVENT, {
+    detail: {
+      source: 'external_integrations',
+      ignored_job_token: token
+    }
+  }));
+
+  const readyEvents = state.dispatched.filter((event) => event.type === WARGAMES_EXTENSION_READY_EVENT);
+  assert.equal(readyEvents.length, 2);
+  assert.equal(JSON.stringify(readyEvents.at(-1).detail), JSON.stringify(initialReadyEvents[0].detail));
+  assert.equal(JSON.stringify(readyEvents.at(-1).detail).includes(token), false);
+  assert.equal(state.sentMessages.length, 0);
+  assert.equal(state.appended.length, 0);
 });

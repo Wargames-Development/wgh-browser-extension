@@ -225,6 +225,24 @@ The extension announces readiness with:
 wgh:browser-extension-ready
 ```
 
+A Solder page that loads after the extension's initial readiness announcement can request the same static capability response with:
+
+```text
+wgh:browser-extension-probe
+```
+
+The probe is detection-only. It does not claim or start a job, send a runtime job message, open a tab, call a Wargames endpoint, touch a Technic page, or include credentials or tokens in the readiness response.
+
+A page can safely check again with:
+
+```js
+window.dispatchEvent(new CustomEvent('wgh:browser-extension-probe', {
+  detail: { source: 'external_integrations' }
+}));
+```
+
+The installed extension responds by dispatching a fresh `wgh:browser-extension-ready` event with its existing supported and reserved workflow metadata. Detection confirms that a compatible bridge responded on the current page; it does not guarantee a browser-store installation or a particular extension version.
+
 In the real Wargames page, dispatch the launch event only from a user action such as a button click. For local developer-mode testing, you can dispatch the event from the Wargames/Solder page console after replacing all placeholder values with the local job creation output:
 
 ```js

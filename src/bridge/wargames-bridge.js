@@ -3,6 +3,7 @@
 
   const EVENT_NAME = 'wgh:technic-extension-job';
   const READY_EVENT_NAME = 'wgh:browser-extension-ready';
+  const PROBE_EVENT_NAME = 'wgh:browser-extension-probe';
   const MESSAGE_START_TECHNIC_JOB = 'WGH_START_TECHNIC_JOB';
   const ACTIVE_JOB_TYPE = 'technic_changelog_post';
   const RESERVED_JOB_TYPES = new Set(['technic_update_publish_future']);
@@ -162,6 +163,20 @@
     }
   }
 
+  function announceReadiness() {
+    window.dispatchEvent(new CustomEvent(READY_EVENT_NAME, {
+      detail: {
+        extension: 'WGH Browser Extension',
+        supports: [ACTIVE_JOB_TYPE],
+        reserved: Array.from(RESERVED_JOB_TYPES),
+        patch_scope: 'technic_form_fill_confirmation_safety',
+        form_filling_implemented: true,
+        user_confirmation_required: true,
+        silent_submission_enabled: false
+      }
+    }));
+  }
+
   window.addEventListener(EVENT_NAME, (event) => {
     // This event should be dispatched by a user action in the Wargames UI.
     // Invalid, expired, reserved, or malformed payloads are rejected without
@@ -169,15 +184,11 @@
     startJob(event.detail || {});
   });
 
-  window.dispatchEvent(new CustomEvent(READY_EVENT_NAME, {
-    detail: {
-      extension: 'WGH Browser Extension',
-      supports: [ACTIVE_JOB_TYPE],
-      reserved: Array.from(RESERVED_JOB_TYPES),
-      patch_scope: 'technic_form_fill_confirmation_safety',
-      form_filling_implemented: true,
-      user_confirmation_required: true,
-      silent_submission_enabled: false
-    }
-  }));
+  window.addEventListener(PROBE_EVENT_NAME, () => {
+    // A probe only repeats static capability metadata. It must never claim a
+    // job, send a runtime message, open a tab, or touch a Technic page.
+    announceReadiness();
+  });
+
+  announceReadiness();
 })();
