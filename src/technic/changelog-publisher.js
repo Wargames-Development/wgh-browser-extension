@@ -6,8 +6,11 @@
   const MESSAGE_TECHNIC_JOB_COMPLETED = 'WGH_TECHNIC_JOB_COMPLETED';
   const MESSAGE_TECHNIC_JOB_FAILED = 'WGH_TECHNIC_JOB_FAILED';
   const ACTIVE_JOB_TYPE = 'technic_changelog_post';
+  const UPDATE_JOB_TYPE = 'technic_update_publish';
+  const RESERVED_UPDATE_JOB_TYPE = 'technic_update_publish_future';
   const MAX_VERSION_LENGTH = 128;
   const MAX_CHANGELOG_LENGTH = 64000;
+  const MAX_UPDATE_TEXT_LENGTH = 255;
   const SUPPORTED_PATCH_SCOPE = 'technic_form_fill_confirmation_safety';
   const FORM_WAIT_TIMEOUT_MS = 8000;
   const FORM_WAIT_INTERVAL_MS = 250;
@@ -91,9 +94,13 @@
         return '';
       }
       const path = url.pathname.replace(/\/+$/, '');
-      if (/^\/modpack\/edit\/[A-Za-z0-9-]+\/versions$/.test(path)
-        || /^\/dashboard\/modpack\/[A-Za-z0-9-]+\/versions$/.test(path)) {
-        return url.toString();
+      const editMatch = path.match(/^\/modpack\/edit\/([A-Za-z0-9-]+)\/versions$/);
+      if (editMatch) {
+        return `https://www.technicpack.net/modpack/edit/${encodeURIComponent(editMatch[1])}/versions`;
+      }
+      const dashboardMatch = path.match(/^\/dashboard\/modpack\/([A-Za-z0-9-]+)\/versions$/);
+      if (dashboardMatch) {
+        return `https://www.technicpack.net/modpack/edit/${encodeURIComponent(dashboardMatch[1])}/versions`;
       }
     } catch (_) {
       return '';
@@ -137,20 +144,42 @@
     const technicUrl = validateTechnicVersionsUrl(String(preview.technicUrl || '').trim());
     const versionNumber = String(preview.versionNumber || '').trim();
     const changelogText = String(preview.changelogText || '').trim();
+    const updateText = String(preview.updateText || '').trim();
+    const updateTitle = String(preview.updateTitle || '').trim();
+    const updateLength = Number(preview.updateLength || updateText.length || 0);
+    const updateCharacterLimit = Number(preview.updateCharacterLimit || MAX_UPDATE_TEXT_LENGTH);
     const expiresAt = String(preview.expiresAt || message.expiresAt || '').trim();
     const confirmationId = String(message.confirmationId || '').trim();
 
-    if (jobType !== ACTIVE_JOB_TYPE) {
-      return { ok: false, code: jobType === 'technic_update_publish_future' ? 'reserved_job_type' : 'unsupported_job_type', message: 'This extension version only supports Technic changelog posting. No Technic form was changed.' };
+    if (jobType === RESERVED_UPDATE_JOB_TYPE) {
+      return { ok: false, code: 'reserved_job_type', message: 'This update publisher placeholder job type is reserved. No Technic form was changed.' };
     }
-    if (!technicUrl || !versionNumber || !changelogText || !confirmationId) {
+    if (jobType !== ACTIVE_JOB_TYPE && jobType !== UPDATE_JOB_TYPE) {
+      return { ok: false, code: 'unsupported_job_type', message: 'This extension version only supports Technic changelog and update publishing. No Technic form was changed.' };
+    }
+    if (!technicUrl || !confirmationId) {
       return { ok: false, code: 'malformed_job_payload', message: 'The Wargames/Solder job payload was incomplete. Use manual copy/export instead.' };
     }
     if (!isFutureIsoDate(expiresAt)) {
       return { ok: false, code: 'job_expired', message: 'The Wargames/Solder job payload is expired. No Technic form was changed; use manual copy/export instead.' };
     }
-    if (versionNumber.length > MAX_VERSION_LENGTH || changelogText.length > MAX_CHANGELOG_LENGTH) {
-      return { ok: false, code: 'malformed_job_payload', message: 'The Wargames/Solder job payload was too large for the safe MVP form fill. Use manual copy/export instead.' };
+
+    if (jobType === ACTIVE_JOB_TYPE) {
+      if (!versionNumber || !changelogText) {
+        return { ok: false, code: 'malformed_job_payload', message: 'The Wargames/Solder changelog payload was incomplete. Use manual copy/export instead.' };
+      }
+      if (versionNumber.length > MAX_VERSION_LENGTH || changelogText.length > MAX_CHANGELOG_LENGTH) {
+        return { ok: false, code: 'malformed_job_payload', message: 'The Wargames/Solder changelog payload was too large for the safe MVP form fill. Use manual copy/export instead.' };
+      }
+    }
+
+    if (jobType === UPDATE_JOB_TYPE) {
+      if (!updateText) {
+        return { ok: false, code: 'malformed_update_payload', message: 'The Wargames/Solder update payload did not include Technic update copy text. Use manual copy/export instead.' };
+      }
+      if (updateText.length > MAX_UPDATE_TEXT_LENGTH || updateLength > MAX_UPDATE_TEXT_LENGTH || updateCharacterLimit > MAX_UPDATE_TEXT_LENGTH) {
+        return { ok: false, code: 'update_text_too_long', message: 'The Wargames/Solder update payload was longer than Technic\'s 255-character status limit. Use manual copy/export instead.' };
+      }
     }
 
     return {
@@ -160,6 +189,10 @@
         technicUrl,
         versionNumber,
         changelogText,
+        updateText,
+        updateTitle,
+        updateLength: Number.isFinite(updateLength) ? updateLength : updateText.length,
+        updateCharacterLimit: Number.isFinite(updateCharacterLimit) ? updateCharacterLimit : MAX_UPDATE_TEXT_LENGTH,
         expiresAt,
         confirmationId
       }
@@ -253,6 +286,40 @@
     }) || controls.find((field) => String(field.tagName || '').toLowerCase() === 'textarea') || null;
   }
 
+  function findUpdateField(form) {
+    const exactSelectors = [
+      'textarea[name="status"]',
+      'textarea[name="status_message"]',
+      'textarea[name="statusMessage"]',
+      'textarea[name="update"]',
+      'textarea[name="update_text"]',
+      'textarea[name="updateText"]',
+      'textarea[name="update_status"]',
+      'textarea[name="message"]',
+      'textarea[name="announcement"]',
+      'input[name="status"]',
+      'input[name="status_message"]',
+      'input[name="statusMessage"]',
+      'input[name="update"]',
+      'input[name="update_text"]',
+      'input[name="message"]'
+    ];
+    for (const selector of exactSelectors) {
+      const match = safeQuery(form, selector);
+      if (isFieldUsable(match)) {
+        return match;
+      }
+    }
+    const controls = getControls(form);
+    return controls.find((field) => {
+      const tag = String(field.tagName || '').toLowerCase();
+      const metadata = fieldMetadata(field);
+      return (tag === 'textarea' || tag === 'input')
+        && /(status|update|announcement|message|notice)/.test(metadata)
+        && !/(csrf|token|hash|slug|url|password|search|version|build|changelog|change_log|change-log)/.test(metadata);
+    }) || null;
+  }
+
   function findSubmitButton(form) {
     return safeQuery(form, 'button[type="submit"], input[type="submit"]')
       || safeQuery(form, 'button:not([type])')
@@ -266,7 +333,7 @@
   function detectAccessState() {
     const text = bodyText();
     const loginForm = safeQuery(document, 'form[action*="login"], form[action*="signin"], input[type="password"], input[name="username"], input[name="login"]');
-    if (loginForm && /(log in|login|sign in|signin|password)/i.test(text)) {
+    if ((loginForm && /(log in|login|sign in|signin|password)/i.test(text)) || /(?:log in|login|sign in|signin).{0,80}password|password.{0,80}(?:log in|login|sign in|signin)/i.test(text)) {
       return { ok: false, code: 'technic_not_logged_in', message: 'Technic appears to be asking you to log in. Log in to Technic normally, then retry the Wargames extension job or use manual copy/export.' };
     }
 
@@ -286,7 +353,7 @@
     return { ok: true };
   }
 
-  function detectForm() {
+  function detectChangelogForm() {
     const forms = safeQueryAll(document, 'form');
     if (forms.length === 0) {
       const access = detectAccessState();
@@ -331,27 +398,70 @@
     };
   }
 
+  function detectUpdateForm() {
+    const forms = safeQueryAll(document, 'form');
+    if (forms.length === 0) {
+      const access = detectAccessState();
+      if (!access.ok) {
+        return access;
+      }
+      return { ok: false, code: 'technic_form_not_found', message: 'The Technic update/status form was not found. Technic may have changed the page layout; use manual copy/export instead.' };
+    }
+
+    let best = null;
+    for (const form of forms) {
+      const updateField = findUpdateField(form);
+      const score = updateField ? 1 : 0;
+      if (!best || score > best.score) {
+        best = { form, updateField, score };
+      }
+    }
+
+    if (!best || best.score === 0 || !best.updateField) {
+      const access = detectAccessState();
+      if (!access.ok) {
+        return access;
+      }
+      return { ok: false, code: 'technic_update_field_missing', message: 'The Technic update/status message field was not found. No Technic form was submitted; use manual copy/export instead.' };
+    }
+
+    return {
+      ok: true,
+      value: {
+        form: best.form,
+        updateField: best.updateField,
+        submitButton: findSubmitButton(best.form)
+      }
+    };
+  }
+
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async function waitForTechnicForm(timeoutMs = FORM_WAIT_TIMEOUT_MS) {
+  function isTerminalFormFailure(result) {
+    return result?.code === 'technic_not_logged_in'
+      || result?.code === 'technic_permission_denied'
+      || result?.code === 'technic_version_field_missing'
+      || result?.code === 'technic_changelog_field_missing'
+      || result?.code === 'technic_update_field_missing';
+  }
+
+  async function waitForTechnicForm(jobType, timeoutMs = FORM_WAIT_TIMEOUT_MS) {
+    const detector = jobType === UPDATE_JOB_TYPE ? detectUpdateForm : detectChangelogForm;
     const startedAt = Date.now();
-    let lastResult = detectForm();
-    if (lastResult.ok) {
+    let lastResult = detector();
+    if (lastResult.ok || isTerminalFormFailure(lastResult)) {
       return lastResult;
     }
 
     while (Date.now() - startedAt < timeoutMs) {
       await sleep(FORM_WAIT_INTERVAL_MS);
-      const result = detectForm();
-      if (result.ok) {
+      const result = detector();
+      if (result.ok || isTerminalFormFailure(result)) {
         return result;
       }
       lastResult = result;
-      if (result.code === 'technic_not_logged_in' || result.code === 'technic_permission_denied') {
-        return result;
-      }
     }
 
     const access = detectAccessState();
@@ -471,6 +581,12 @@
     if (preview?.changelogText) {
       appendReadonlyPreview(wrapper, 'Manual fallback changelog text', redactSensitiveText(preview.changelogText), true);
     }
+    if (preview?.updateTitle) {
+      appendReadonlyPreview(wrapper, 'Manual fallback update title', redactSensitiveText(preview.updateTitle));
+    }
+    if (preview?.updateText) {
+      appendReadonlyPreview(wrapper, `Manual fallback update/status text (${String(preview.updateText).length}/${preview.updateCharacterLimit || MAX_UPDATE_TEXT_LENGTH})`, redactSensitiveText(preview.updateText), true);
+    }
     wrapper.appendChild(status);
     document.documentElement.appendChild(wrapper);
     return wrapper;
@@ -493,7 +609,7 @@
 
   function showFailure(preview, code, message, confirmationId = '') {
     const wrapper = createOverlayShell(
-      'WGH Technic changelog job could not continue',
+      preview?.jobType === UPDATE_JOB_TYPE ? 'WGH Technic update job could not continue' : 'WGH Technic changelog job could not continue',
       message,
       preview,
       'No Technic form was submitted.'
@@ -555,9 +671,12 @@
   }
 
   function showConfirmation(preview, formData, originalValues) {
+    const isUpdate = preview.jobType === UPDATE_JOB_TYPE;
     const wrapper = createOverlayShell(
-      'Review before submitting to Technic',
-      'The version/build and changelog fields have been filled on the normal Technic manage versions form. Review the page, then choose whether to submit the Technic form.',
+      isUpdate ? 'Review before publishing Technic update' : 'Review before submitting to Technic',
+      isUpdate
+        ? 'The Technic update/status message field has been filled on the normal Technic page. Review the page, then choose whether to submit the Technic form.'
+        : 'The version/build and changelog fields have been filled on the normal Technic manage versions form. Review the page, then choose whether to submit the Technic form.',
       preview,
       'Nothing has been submitted. Submission requires pressing the confirmation button below.'
     );
@@ -614,8 +733,12 @@
       async () => {
         submit.disabled = true;
         cancel.disabled = true;
-        setFieldValue(formData.versionField, originalValues.version);
-        setFieldValue(formData.changelogField, originalValues.changelog);
+        if (isUpdate) {
+          setFieldValue(formData.updateField, originalValues.update);
+        } else {
+          setFieldValue(formData.versionField, originalValues.version);
+          setFieldValue(formData.changelogField, originalValues.changelog);
+        }
         const failure = await sendRuntimeMessage({
           type: MESSAGE_TECHNIC_JOB_FAILED,
           confirmationId: preview.confirmationId,
@@ -665,25 +788,32 @@
       return result;
     }
 
-    const formResult = await waitForTechnicForm();
+    const formResult = await waitForTechnicForm(preview.jobType);
     if (!formResult.ok) {
       showFailure(preview, formResult.code, formResult.message, preview.confirmationId);
       return formResult;
     }
 
     const formData = formResult.value;
-    const originalValues = {
-      version: String(formData.versionField.value || ''),
-      changelog: String(formData.changelogField.value || '')
-    };
-    setFieldValue(formData.versionField, preview.versionNumber);
-    setFieldValue(formData.changelogField, preview.changelogText);
+    const originalValues = preview.jobType === UPDATE_JOB_TYPE
+      ? { update: String(formData.updateField.value || '') }
+      : {
+          version: String(formData.versionField.value || ''),
+          changelog: String(formData.changelogField.value || '')
+        };
+    if (preview.jobType === UPDATE_JOB_TYPE) {
+      setFieldValue(formData.updateField, preview.updateText);
+    } else {
+      setFieldValue(formData.versionField, preview.versionNumber);
+      setFieldValue(formData.changelogField, preview.changelogText);
+    }
     showConfirmation(preview, formData, originalValues);
 
     return {
       ok: true,
-      code: 'technic_form_filled_confirmation_required',
+      code: preview.jobType === UPDATE_JOB_TYPE ? 'technic_update_form_filled_confirmation_required' : 'technic_form_filled_confirmation_required',
       formFillingImplemented: true,
+      updatePublisherImplemented: preview.jobType === UPDATE_JOB_TYPE,
       silentSubmissionEnabled: false,
       userConfirmationRequired: true
     };
@@ -707,6 +837,7 @@
           code: result.code,
           message: result.message || '',
           formFillingImplemented: result.formFillingImplemented === true,
+          updatePublisherImplemented: result.updatePublisherImplemented === true,
           silentSubmissionEnabled: false,
           userConfirmationRequired: true
         });

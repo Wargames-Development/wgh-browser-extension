@@ -62,6 +62,62 @@ function validClaimResponse(overrides = {}) {
   };
 }
 
+
+function validUpdateClaimResponse(overrides = {}) {
+  return validClaimResponse({
+    job: {
+      job_uuid: 'technic-extension-job-20990701120000-abcdef123456',
+      job_type: 'technic_update_publish',
+      status: 'claimed',
+      expires_at: future,
+      technic_platform_slug: 'example-pack',
+      version_number: '1.2.3',
+      internal_api_token_exposed: false,
+      token_hash_exposed: false,
+      technic_credentials_stored: false,
+      technic_session_tokens_stored: false,
+      technic_cookies_stored: false
+    },
+    payload: {
+      schema_version: 1,
+      job: {
+        job_uuid: 'technic-extension-job-20990701120000-abcdef123456',
+        job_type: 'technic_update_publish',
+        status: 'created',
+        expires_at: future,
+        token_hash_exposed: false,
+        internal_api_token_exposed: false
+      },
+      target: {
+        technic_platform_slug: 'example-pack',
+        target_url_status: 'extension_target_ready',
+        version_number: '1.2.3'
+      },
+      extension_payload: {
+        content_type: 'update',
+        target: {
+          technic_platform_slug: 'example-pack',
+          version_number: '1.2.3'
+        },
+        update: {
+          title: 'Example Pack 1.2.3',
+          copy_text: 'Update now available: 1.2.3',
+          length: 27,
+          character_limit: 255
+        }
+      },
+      safety: {
+        credentials_included: false,
+        session_tokens_included: false,
+        cookies_included: false,
+        user_initiated_flow_required: true,
+        user_confirmation_required_before_submit: true
+      }
+    },
+    ...overrides
+  });
+}
+
 function createHarness(fetchImpl = async () => ({ ok: true, status: 200, text: async () => JSON.stringify(validClaimResponse()) })) {
   const state = {
     fetchCalls: [],
@@ -176,6 +232,67 @@ test('claims a valid Solder job, opens Technic after validation, and sends only 
   assert.equal(state.sentMessages[0].message.preview.changelogText, 'Approved changelog text');
   assert.equal(JSON.stringify(state.sentMessages[0].message).includes(token), false);
   assert.equal(JSON.stringify(state.sentMessages[0].message).includes('owner_external_id'), false);
+});
+
+test('claims a valid Technic update publish job and sends only safe update preview data to the tab', async () => {
+  const state = createHarness(async () => ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(validUpdateClaimResponse())
+  }));
+  const response = await sendRuntimeMessage(state, startMessage({ jobType: 'technic_update_publish' }));
+
+  assert.equal(response.ok, true);
+  assert.equal(JSON.stringify(state.createdTabs), JSON.stringify([{ url: 'https://www.technicpack.net/modpack/edit/example-pack/versions', active: true }]));
+
+  state.onUpdated(42, { status: 'complete' });
+  assert.equal(state.sentMessages.length, 1);
+  const payload = state.sentMessages[0].message;
+  assert.equal(payload.preview.jobType, 'technic_update_publish');
+  assert.equal(payload.preview.updateText, 'Update now available: 1.2.3');
+  assert.equal(payload.preview.updateCharacterLimit, 255);
+  assert.equal(payload.preview.changelogText, '');
+  assert.equal(JSON.stringify(payload).includes(token), false);
+});
+
+test('rejects Technic update publish jobs over the 255 character status limit', async () => {
+  const state = createHarness(async () => ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(validUpdateClaimResponse({
+      payload: {
+        job: { job_type: 'technic_update_publish', expires_at: future },
+        target: { technic_platform_slug: 'example-pack', version_number: '1.2.3' },
+        extension_payload: { update: { copy_text: 'x'.repeat(256), length: 256, character_limit: 255 } },
+        safety: { credentials_included: false, session_tokens_included: false, cookies_included: false }
+      }
+    }))
+  }));
+  const response = await sendRuntimeMessage(state, startMessage({ jobType: 'technic_update_publish' }));
+
+  assert.equal(response.ok, false);
+  assert.match(response.message, /255/);
+  assert.equal(state.createdTabs.length, 0);
+});
+
+test('rejects Technic update publish jobs with over-limit status length metadata before opening Technic', async () => {
+  const state = createHarness(async () => ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(validUpdateClaimResponse({
+      payload: {
+        job: { job_type: 'technic_update_publish', expires_at: future },
+        target: { technic_platform_slug: 'example-pack', version_number: '1.2.3' },
+        extension_payload: { update: { copy_text: 'Short update text', length: 300, character_limit: 255 } },
+        safety: { credentials_included: false, session_tokens_included: false, cookies_included: false }
+      }
+    }))
+  }));
+  const response = await sendRuntimeMessage(state, startMessage({ jobType: 'technic_update_publish' }));
+
+  assert.equal(response.ok, false);
+  assert.match(response.message, /255/);
+  assert.equal(state.createdTabs.length, 0);
 });
 
 test('rejects bad launch payloads before contacting Solder or opening Technic', async () => {

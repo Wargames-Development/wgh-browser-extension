@@ -1,5 +1,6 @@
 import {
   ACTIVE_JOB_TYPE,
+  UPDATE_JOB_TYPE,
   deriveTechnicVersionsUrlFromSlug,
   isFutureIsoDate,
   isProbablyExtensionJob,
@@ -53,7 +54,7 @@ export function validateLaunchPayload(detail, nowMs = Date.now()) {
     return {
       ok: false,
       code: isReservedJobType(jobType) ? 'reserved_job_type' : 'unsupported_job_type',
-      message: 'This extension version only supports Technic changelog posting.'
+      message: 'This extension version only supports Technic changelog and update publishing.'
     };
   }
 
@@ -135,6 +136,10 @@ export function extractClaimPreview(result) {
     target.technic_platform_edit_versions_url
       || payload.technic_platform_edit_versions_url
       || job.technic_platform_edit_versions_url
+      || target.target_url
+      || payload.target_url
+      || job.target_url
+      || getDeep(payload, ['extension_payload.target.technic_platform_edit_versions_url', 'extension_payload.target.target_url'])
       || ''
   );
   const slugUrl = deriveTechnicVersionsUrlFromSlug(
@@ -142,10 +147,13 @@ export function extractClaimPreview(result) {
       || payload.technic_platform_slug
       || job.technic_platform_slug
       || payload.pack?.slug
+      || getDeep(payload, ['extension_payload.target.technic_platform_slug', 'extension_payload.pack.slug'])
       || ''
   );
+  const jobType = String(job.job_type || payload.job?.job_type || getDeep(payload, ['extension_payload.job_type']) || '').trim();
   const versionNumber = String(getDeep(payload, [
     'target.version_number',
+    'extension_payload.target.version_number',
     'extension_payload.version_number',
     'extension_payload.build.name',
     'build.name'
@@ -159,11 +167,32 @@ export function extractClaimPreview(result) {
     'job.changelog_text',
     'changelog_text'
   ]) || '').trim();
+  const updateText = String(getDeep(payload, [
+    'extension_payload.update.copy_text',
+    'manual_copy_export.copy_text'
+  ]) || '').trim();
+  const updateTitle = String(getDeep(payload, [
+    'extension_payload.update.title',
+    'manual_copy_export.title'
+  ]) || '').trim();
+  const updateLength = Number(getDeep(payload, [
+    'extension_payload.update.length',
+    'manual_copy_export.copy_text_length'
+  ]) || updateText.length || 0);
+  const updateCharacterLimit = Number(getDeep(payload, [
+    'extension_payload.update.character_limit',
+    'manual_copy_export.character_limit'
+  ]) || 255);
 
   return {
+    jobType,
     technicUrl: explicitUrl || slugUrl,
     versionNumber,
-    changelogText
+    changelogText,
+    updateText,
+    updateTitle,
+    updateLength: Number.isFinite(updateLength) ? updateLength : updateText.length,
+    updateCharacterLimit: Number.isFinite(updateCharacterLimit) ? updateCharacterLimit : 255
   };
 }
 
@@ -178,7 +207,7 @@ export function validateClaimResponse(responseJson, nowMs = Date.now()) {
     return {
       ok: false,
       code: isReservedJobType(jobType) ? 'reserved_job_type' : 'unsupported_job_type',
-      message: 'This extension version only supports Technic changelog posting.'
+      message: 'This extension version only supports Technic changelog and update publishing.'
     };
   }
 
@@ -210,8 +239,16 @@ export function validateClaimResponse(responseJson, nowMs = Date.now()) {
   if (!preview.technicUrl) {
     return { ok: false, code: 'invalid_technic_target', message: 'The claimed Solder extension job did not include a supported Technic manage versions URL or slug.' };
   }
-  if (!preview.versionNumber || !preview.changelogText) {
+  if (jobType === ACTIVE_JOB_TYPE && (!preview.versionNumber || !preview.changelogText)) {
     return { ok: false, code: 'invalid_changelog_payload', message: 'The claimed Solder extension job did not include a version number and changelog text.' };
+  }
+  if (jobType === UPDATE_JOB_TYPE) {
+    if (!preview.updateText) {
+      return { ok: false, code: 'invalid_update_payload', message: 'The claimed Solder extension job did not include Technic update copy text.' };
+    }
+    if (preview.updateText.length > 255 || preview.updateLength > 255 || preview.updateCharacterLimit > 255) {
+      return { ok: false, code: 'update_text_too_long', message: 'The claimed Solder extension job included Technic update copy text or limit metadata over 255 characters.' };
+    }
   }
 
   return {
@@ -221,7 +258,7 @@ export function validateClaimResponse(responseJson, nowMs = Date.now()) {
       job,
       payload,
       ...preview,
-      jobType: ACTIVE_JOB_TYPE
+      jobType
     }
   };
 }

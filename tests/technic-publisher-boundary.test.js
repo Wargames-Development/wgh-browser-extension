@@ -39,3 +39,12 @@ test('Patch 003 documentation keeps the manual fallback and no-official-Technic-
   assert.match(solderContract, /does not implement silent submission/i);
   assert.match(solderContract, /official Technic Platform API posting support/i);
 });
+
+
+test('documents active Technic update publisher contract and reserved future placeholder', () => {
+  assert.match(solderContract, /technic_update_publish/);
+  assert.match(solderContract, /technic_update_publish_future/);
+  assert.match(solderContract, /extension_payload\.update\.copy_text/);
+  assert.match(solderContract, /255-character/i);
+  assert.match(solderContract, /authoritative/i);
+});

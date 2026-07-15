@@ -1,6 +1,8 @@
 // Shared validation helpers for future bundled builds and Node-based tests.
 
 export const ACTIVE_JOB_TYPE = 'technic_changelog_post';
+export const ACTIVE_JOB_TYPES = Object.freeze(['technic_changelog_post', 'technic_update_publish']);
+export const UPDATE_JOB_TYPE = 'technic_update_publish';
 export const RESERVED_JOB_TYPES = Object.freeze(['technic_update_publish_future']);
 
 export function normalizeApiBaseUrl(value) {
@@ -28,7 +30,7 @@ export function isProbablyExtensionToken(value) {
 }
 
 export function isSupportedJobType(value) {
-  return value === ACTIVE_JOB_TYPE;
+  return ACTIVE_JOB_TYPES.includes(value);
 }
 
 export function isReservedJobType(value) {

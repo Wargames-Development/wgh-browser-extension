@@ -2,7 +2,7 @@
   "name": "wgh-browser-extension",
   "version": "0.1.0",
   "private": true,
-  "description": "Browser extension for Wargames Hosting workflows, starting with user-confirmed Technic Platform changelog posting from Wargames Solder without storing Technic credentials.",
+  "description": "Browser extension for user-confirmed Wargames Hosting workflows that post Technic changelogs and update/status messages from Wargames Solder without storing Technic credentials.",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.js",
@@ -17,6 +17,7 @@
     "webextension",
     "technic",
     "changelog",
+    "update-publisher",
     "chrome-extension",
     "firefox-extension",
     "edge-extension",

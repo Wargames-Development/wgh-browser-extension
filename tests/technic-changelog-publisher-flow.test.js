@@ -249,6 +249,9 @@ function createTechnicForm(document, state, options = {}) {
   if (options.changelog !== false) {
     form.appendChild(new FakeElement('textarea', { name: 'changelog', value: options.initialChangelog || '' }, state));
   }
+  if (options.update === true) {
+    form.appendChild(new FakeElement('textarea', { name: 'status_message', value: options.initialUpdate || '' }, state));
+  }
   form.appendChild(new FakeElement('button', { type: 'submit' }, state));
   document.body.appendChild(form);
   return form;
@@ -272,6 +275,22 @@ function validPayload(overrides = {}) {
     },
     ...overrides
   };
+}
+
+function validUpdatePayload(overrides = {}) {
+  return validPayload({
+    preview: {
+      jobType: 'technic_update_publish',
+      technicUrl: 'https://www.technicpack.net/modpack/edit/example-pack/versions',
+      versionNumber: '1.2.3',
+      updateTitle: 'Example Pack 1.2.3',
+      updateText: 'Update now available: 1.2.3',
+      updateLength: 27,
+      updateCharacterLimit: 255,
+      expiresAt: future
+    },
+    ...overrides
+  });
 }
 
 function createHarness({ href = 'https://www.technicpack.net/modpack/edit/example-pack/versions', bodyText = '', formOptions = {} } = {}, sendMessageImpl = async () => ({ ok: true })) {
@@ -369,6 +388,66 @@ test('fills Technic version and changelog fields but waits for explicit confirma
   assert.equal(state.submissions.length, 1);
 });
 
+test('fills only the Technic update/status field and waits for explicit confirmation before submitting', async () => {
+  const { state, document, form } = createHarness({ formOptions: { update: true } });
+  const response = await sendContentMessage(state, validUpdatePayload());
+
+  assert.equal(response.ok, true);
+  assert.equal(response.code, 'technic_update_form_filled_confirmation_required');
+  assert.equal(form.querySelector('textarea[name="status_message"]').value, 'Update now available: 1.2.3');
+  assert.equal(form.querySelector('input[name="version"]').value, '');
+  assert.equal(form.querySelector('textarea[name="changelog"]').value, '');
+  assert.equal(state.submissions.length, 0);
+
+  const submit = findButtonByText(document.documentElement, 'Submit Technic form');
+  assert.ok(submit);
+  submit.click();
+  await flushAsync();
+
+  assert.equal(state.runtimeMessages.length, 1);
+  assert.equal(JSON.stringify(state.runtimeMessages[0]), JSON.stringify({
+    type: 'WGH_TECHNIC_JOB_COMPLETED',
+    confirmationId: 'wgh-confirm-test',
+    userConfirmed: true,
+    submissionAttempted: true
+  }));
+  assert.equal(state.submissions.length, 1);
+});
+
+test('update cancel restores original status text and reports safe failure', async () => {
+  const { state, document, form } = createHarness({ formOptions: { update: true, initialUpdate: 'old status' } });
+  const response = await sendContentMessage(state, validUpdatePayload());
+  assert.equal(response.ok, true);
+
+  const cancel = findButtonByText(document.documentElement, 'Cancel / use manual copy');
+  assert.ok(cancel);
+  cancel.click();
+  await flushAsync();
+
+  assert.equal(form.querySelector('textarea[name="status_message"]').value, 'old status');
+  assert.equal(state.submissions.length, 0);
+  assert.equal(state.runtimeMessages.length, 1);
+  assert.equal(state.runtimeMessages[0].type, 'WGH_TECHNIC_JOB_FAILED');
+  assert.match(state.runtimeMessages[0].reason, /user_cancelled/);
+});
+
+test('rejects oversized Technic update payloads before filling fields', async () => {
+  const { state, form } = createHarness({ formOptions: { update: true } });
+  const response = await sendContentMessage(state, validUpdatePayload({
+    preview: {
+      ...validUpdatePayload().preview,
+      updateText: 'x'.repeat(256),
+      updateLength: 256,
+      updateCharacterLimit: 255
+    }
+  }));
+
+  assert.equal(response.ok, false);
+  assert.equal(response.code, 'update_text_too_long');
+  assert.equal(form.querySelector('textarea[name="status_message"]').value, '');
+  assert.equal(state.submissions.length, 0);
+});
+
 test('does not mistake normal owner/contributor page text for permission denial when a form is editable', async () => {
   const { state, form } = createHarness({ bodyText: 'Owner tools Contributor access Manage versions' });
   const response = await sendContentMessage(state, validPayload());
@@ -443,6 +522,9 @@ test('detects login, permission, missing form, and missing field failure states 
 
   const missingChangelog = createHarness({ formOptions: { changelog: false } });
   assert.equal((await sendContentMessage(missingChangelog.state, validPayload())).code, 'technic_changelog_field_missing');
+
+  const missingUpdate = createHarness({ formOptions: {} });
+  assert.equal((await sendContentMessage(missingUpdate.state, validUpdatePayload())).code, 'technic_update_field_missing');
 });
 
 test('rejects malformed, expired, unsupported, and unsafe job payloads before filling fields', async () => {

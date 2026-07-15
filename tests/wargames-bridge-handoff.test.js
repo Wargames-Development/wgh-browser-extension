@@ -125,11 +125,13 @@ async function flushAsync() {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-test('announces readiness with Patch 003 safety boundaries', () => {
+test('announces readiness with active changelog and update publisher safety boundaries', () => {
   const { state } = createHarness();
   const ready = state.dispatched.find((event) => event.type === WARGAMES_EXTENSION_READY_EVENT);
   assert.ok(ready);
-  assert.equal(JSON.stringify(ready.detail.supports), JSON.stringify(['technic_changelog_post']));
+  assert.equal(JSON.stringify(ready.detail.supports), JSON.stringify(['technic_changelog_post', 'technic_update_publish']));
+  assert.equal(ready.detail.targets.technic_update_publish.ready, true);
+  assert.equal(ready.detail.update_target_ready, true);
   assert.equal(ready.detail.patch_scope, 'technic_form_fill_confirmation_safety');
   assert.equal(ready.detail.form_filling_implemented, true);
   assert.equal(ready.detail.user_confirmation_required, true);
@@ -150,6 +152,16 @@ test('forwards valid user-initiated Wargames handoff events to the background sc
     jobType: 'technic_changelog_post',
     expiresAt: '2099-07-01T12:15:00Z'
   }));
+});
+
+test('forwards active Technic update publisher handoff events to the background script', async () => {
+  const { state, window, CustomEvent } = createHarness();
+  window.dispatchEvent(new CustomEvent('wgh:technic-extension-job', { detail: validDetail({ job_type: 'technic_update_publish' }) }));
+  await flushAsync();
+
+  assert.equal(state.sentMessages.length, 1);
+  assert.equal(state.sentMessages[0].jobType, 'technic_update_publish');
+  assert.equal(state.sentMessages[0].jobToken, token);
 });
 
 test('rejects malformed, expired, and reserved handoff events without sending tokens to the background', async () => {
