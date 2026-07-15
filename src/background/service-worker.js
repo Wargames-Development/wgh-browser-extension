@@ -7,7 +7,10 @@
   const MESSAGE_TECHNIC_JOB_COMPLETED = 'WGH_TECHNIC_JOB_COMPLETED';
   const MESSAGE_TECHNIC_JOB_FAILED = 'WGH_TECHNIC_JOB_FAILED';
   const ACTIVE_JOB_TYPE = 'technic_changelog_post';
+  const UPDATE_JOB_TYPE = 'technic_update_publish';
+  const ACTIVE_JOB_TYPES = new Set([ACTIVE_JOB_TYPE, UPDATE_JOB_TYPE]);
   const RESERVED_JOB_TYPES = new Set(['technic_update_publish_future']);
+  const MAX_UPDATE_TEXT_LENGTH = 255;
   const MAX_PENDING_JOB_MS = 60 * 60 * 1000;
 
   const pendingTabs = new Map();
@@ -136,12 +139,12 @@
     if (!message || typeof message !== 'object') {
       return { ok: false, message: 'The extension launch message was missing.' };
     }
-    if (message.jobType !== ACTIVE_JOB_TYPE) {
+    if (!ACTIVE_JOB_TYPES.has(message.jobType)) {
       return {
         ok: false,
         message: RESERVED_JOB_TYPES.has(message.jobType)
           ? 'That Wargames extension job type is reserved but not implemented yet.'
-          : 'This extension version only supports Technic changelog posting.'
+          : 'This extension version only supports Technic changelog and update publishing.'
       };
     }
     const apiBaseUrl = normalizeApiBaseUrl(message.apiBaseUrl);
@@ -154,7 +157,7 @@
     if (!isFutureIsoDate(expiresAt)) {
       return { ok: false, message: 'The extension launch message is expired or missing a valid expiry time.' };
     }
-    return { ok: true, value: { apiBaseUrl, jobUuid, jobToken, expiresAt, jobType: ACTIVE_JOB_TYPE } };
+    return { ok: true, value: { apiBaseUrl, jobUuid, jobToken, expiresAt, jobType: message.jobType } };
   }
 
   function buildEndpoint(apiBaseUrl, path) {
@@ -231,6 +234,10 @@
       target.technic_platform_edit_versions_url
         || payload.technic_platform_edit_versions_url
         || job.technic_platform_edit_versions_url
+        || target.target_url
+        || payload.target_url
+        || job.target_url
+        || getDeep(payload, ['extension_payload.target.technic_platform_edit_versions_url', 'extension_payload.target.target_url'])
         || ''
     );
     const slugUrl = deriveTechnicVersionsUrlFromSlug(
@@ -238,10 +245,13 @@
         || payload.technic_platform_slug
         || job.technic_platform_slug
         || payload.pack?.slug
+        || getDeep(payload, ['extension_payload.target.technic_platform_slug', 'extension_payload.pack.slug'])
         || ''
     );
+    const jobType = String(job.job_type || payload.job?.job_type || getDeep(payload, ['extension_payload.job_type']) || '').trim();
     const versionNumber = String(getDeep(payload, [
       'target.version_number',
+      'extension_payload.target.version_number',
       'extension_payload.version_number',
       'extension_payload.build.name',
       'build.name'
@@ -255,10 +265,31 @@
       'job.changelog_text',
       'changelog_text'
     ]) || '').trim();
+    const updateText = String(getDeep(payload, [
+      'extension_payload.update.copy_text',
+      'manual_copy_export.copy_text'
+    ]) || '').trim();
+    const updateTitle = String(getDeep(payload, [
+      'extension_payload.update.title',
+      'manual_copy_export.title'
+    ]) || '').trim();
+    const updateLength = Number(getDeep(payload, [
+      'extension_payload.update.length',
+      'manual_copy_export.copy_text_length'
+    ]) || updateText.length || 0);
+    const updateCharacterLimit = Number(getDeep(payload, [
+      'extension_payload.update.character_limit',
+      'manual_copy_export.character_limit'
+    ]) || MAX_UPDATE_TEXT_LENGTH);
     return {
+      jobType,
       technicUrl: explicitUrl || slugUrl,
       versionNumber,
-      changelogText
+      changelogText,
+      updateText,
+      updateTitle,
+      updateLength: Number.isFinite(updateLength) ? updateLength : updateText.length,
+      updateCharacterLimit: Number.isFinite(updateCharacterLimit) ? updateCharacterLimit : MAX_UPDATE_TEXT_LENGTH
     };
   }
 
@@ -269,12 +300,12 @@
     }
 
     const jobType = job.job_type || payload.job?.job_type || '';
-    if (jobType !== ACTIVE_JOB_TYPE) {
+    if (!ACTIVE_JOB_TYPES.has(jobType)) {
       return {
         ok: false,
         message: RESERVED_JOB_TYPES.has(jobType)
           ? 'That Wargames extension job type is reserved but not implemented yet.'
-          : 'This extension version only supports Technic changelog posting.'
+          : 'This extension version only supports Technic changelog and update publishing.'
       };
     }
 
@@ -305,8 +336,16 @@
     if (!preview.technicUrl) {
       return { ok: false, message: 'The claimed Solder extension job did not include a supported Technic manage versions URL or slug.' };
     }
-    if (!preview.versionNumber || !preview.changelogText) {
+    if (jobType === ACTIVE_JOB_TYPE && (!preview.versionNumber || !preview.changelogText)) {
       return { ok: false, message: 'The claimed Solder extension job did not include a version number and changelog text.' };
+    }
+    if (jobType === UPDATE_JOB_TYPE) {
+      if (!preview.updateText) {
+        return { ok: false, message: 'The claimed Solder extension job did not include Technic update copy text.' };
+      }
+      if (preview.updateText.length > MAX_UPDATE_TEXT_LENGTH || preview.updateLength > MAX_UPDATE_TEXT_LENGTH || preview.updateCharacterLimit > MAX_UPDATE_TEXT_LENGTH) {
+        return { ok: false, message: 'The claimed Solder extension job included Technic update copy text or limit metadata over 255 characters.' };
+      }
     }
 
     return {
@@ -317,10 +356,14 @@
         payload,
         preview: {
           jobUuid: job.job_uuid || payload.job?.job_uuid || '',
-          jobType: ACTIVE_JOB_TYPE,
+          jobType,
           technicUrl: preview.technicUrl,
           versionNumber: preview.versionNumber,
           changelogText: preview.changelogText,
+          updateText: preview.updateText,
+          updateTitle: preview.updateTitle,
+          updateLength: preview.updateLength,
+          updateCharacterLimit: preview.updateCharacterLimit,
           expiresAt
         }
       }

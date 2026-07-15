@@ -4,6 +4,7 @@
 
 export const JOB_TYPES = Object.freeze({
   TECHNIC_CHANGELOG_POST: 'technic_changelog_post',
+  TECHNIC_UPDATE_PUBLISH: 'technic_update_publish',
   TECHNIC_UPDATE_PUBLISH_FUTURE: 'technic_update_publish_future'
 });
 

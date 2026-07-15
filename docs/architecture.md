@@ -4,7 +4,7 @@
 
 The extension exists to bridge user-initiated workflows between Wargames Solder and third-party web pages that do not expose a suitable public API.
 
-The first workflow is Technic Platform changelog posting.
+The active workflows are Technic Platform changelog posting and user-confirmed Technic update/status posting.
 
 ## High-level flow
 
@@ -17,7 +17,7 @@ Wargames Solder panel
   -> background validates the claimed payload and safety boundaries
   -> background opens Technic manage versions page only after validation
   -> Technic content script validates the normal manage versions form
-  -> extension fills the version/build and changelog fields
+  -> extension fills only the expected changelog or update/status fields
   -> user reviews a visible confirmation dialog
   -> normal Technic form submission starts only after explicit user confirmation
 ```
@@ -32,10 +32,10 @@ src/bridge/wargames-bridge.js
   Runs on Wargames pages and receives user-initiated job handoff events.
 
 src/technic/changelog-publisher.js
-  Runs on Technic manage versions pages, fills the expected version/build and changelog fields after payload validation, and requires visible user confirmation before normal form submission.
+  Runs on Technic manage versions pages, fills the expected version/build and changelog fields for `technic_changelog_post`, fills only the update/status message field for `technic_update_publish`, and requires visible user confirmation before normal form submission.
 
-src/technic/update-publisher.future.js
-  Reserved placeholder for future update-publisher work.
+src/technic/update-publisher.js
+  Metadata boundary documenting the active `technic_update_publish` contract and the reserved legacy `technic_update_publish_future` identifier.
 ```
 
 ## Job types
@@ -43,9 +43,10 @@ src/technic/update-publisher.future.js
 Active:
 
 - `technic_changelog_post`
+- `technic_update_publish`
 
 Reserved:
 
 - `technic_update_publish_future`
 
-The extension must reject reserved job types until they are explicitly implemented.
+The extension must advertise the two active job types and must continue rejecting the reserved legacy update placeholder.

@@ -6,7 +6,7 @@
 
 **Wargames Hosting Browser Extension** is a browser extension project for approved Wargames Hosting browser-assisted workflows.
 
-The first active workflow is the **Technic Changelog Publisher**, which helps a Wargames Solder user take a reviewed changelog draft, open the normal Technic Platform manage versions page in their own browser session, fill the version/changelog fields, and submit only after a visible user confirmation.
+The active workflows are the **Technic Changelog Publisher** and **Technic Update Publisher**, which help a Wargames Solder user take reviewed release text, open the normal Technic Platform manage versions page in their own browser session, fill only the expected fields, and submit only after a visible user confirmation.
 
 Repository: https://github.com/Wargames-Development/wgh-browser-extension
 
@@ -21,7 +21,7 @@ Current scope:
 * Build the shared browser extension foundation
 * Support Chrome, Edge, and Opera GX through a Chromium/WebExtension package
 * Support Firefox through a Firefox/WebExtension package
-* Receive and validate `technic_changelog_post` launch events from Wargames pages
+* Receive and validate `technic_changelog_post` and `technic_update_publish` launch events from Wargames pages
 * Claim short-lived extension jobs from Wargames Solder using the per-job token
 * Validate claimed job payloads before opening any Technic page
 * Fill the normal Technic manage versions form after validation
@@ -32,13 +32,13 @@ Current scope:
 * Keep manifest host access scoped to corrected Wargames domains and Technic manage versions pages
 * Ship Wargames extension icon assets in Chromium and Firefox builds
 * Avoid the extra `tabs` permission so local Chromium-family testing does not show an unrelated browsing-history permission warning
-* Reserve a clean boundary for future workflows, such as a possible update publisher
+* Advertise active browser-local capability for `technic_update_publish` while keeping the legacy `_future` placeholder reserved
 
 Not implemented yet:
 
 * Full browser-store publishing workflow
 * Automated GitHub release packaging
-* Full Technic update publishing
+* Silent or server-side Technic update publishing
 * Server-side Technic automation
 * Any official Technic Platform API posting flow
 
@@ -46,7 +46,7 @@ Not implemented yet:
 
 ## What This Extension Does
 
-The first supported workflow assists with Technic Platform changelog posting.
+The supported workflows assist with Technic Platform changelog posting and user-confirmed update/status posting.
 
 The current `technic_changelog_post` flow is:
 
@@ -61,6 +61,8 @@ The current `technic_changelog_post` flow is:
 9. The extension fills the version/build and changelog fields.
 10. The extension shows a visible confirmation dialog.
 11. The user can cancel and restore the original field values, or explicitly start the normal Technic form submission.
+
+The current `technic_update_publish` flow uses the same short-lived job claim and confirmation model, but fills only the Technic update/status message field. Solder provides `extension_payload.update.copy_text` as the authoritative plain-text update body, already stripped of Discord-only Markdown and capped at Technic's 255-character update/status limit. The extension validates that value defensively and rejects empty or over-limit update bodies instead of rebuilding or reformatting the Discord draft.
 
 Completion reporting means the extension reached the user-confirmed submission-start step. It does **not** prove final Technic server-side acceptance after page navigation.
 
@@ -83,9 +85,9 @@ This extension does **not**:
 * Bypass anti-abuse systems
 * Run server-side browser automation for user Technic accounts
 * Claim official Technic Platform API posting support
-* Implement future Technic update publishing
+* Submit Technic update/status messages silently or server-side
 
-Wargames Solder handles launcher build delivery through Solder-compatible systems. Technic Platform changelog entry remains manual by default, with this extension acting only as an optional user-confirmed convenience workflow.
+Wargames Solder handles launcher build delivery through Solder-compatible systems. Technic Platform changelog and update/status entry remain manual by default, with this extension acting only as an optional user-confirmed convenience workflow.
 
 ---
 
@@ -146,13 +148,28 @@ Current purpose:
 * Show safe failure states for unsupported URLs, missing forms, missing fields, login/permission problems, expired jobs, malformed jobs, and unsafe payloads
 * Keep manual copy/export as the fallback path
 
+### `technic_update_publish`
+
+Status: active MVP workflow
+
+Current purpose:
+
+* Receive a Wargames page launch event for the Release-tab Technic update publisher
+* Validate the short-lived extension job handoff payload
+* Claim the job from Wargames Solder
+* Treat `extension_payload.update.copy_text` as the authoritative Technic-safe update/status text
+* Defensively reject empty update text or update text longer than 255 characters
+* Open the relevant Technic Platform edit/version page only after validation
+* Fill only the expected update/status message field
+* Require visible user confirmation before normal Technic form submission
+* Allow cancellation and restore the original update/status field value
+* Keep manual copy/export as the fallback path
+
 ### `technic_update_publish_future`
 
-Status: reserved only
+Status: reserved legacy placeholder
 
-This workflow is intentionally not implemented yet.
-
-The repository keeps a placeholder module boundary for a future update-publisher workflow, but it must not be exposed as a usable feature until the backend and safety model are ready.
+This workflow identifier remains reserved and must still be rejected. New Solder update publisher jobs use `technic_update_publish`.
 
 ---
 
@@ -162,8 +179,9 @@ This extension is designed to work with the Wargames Solder extension job handof
 
 The Solder side owns:
 
-* Changelog draft generation
-* Changelog review/editing
+* Changelog and update announcement draft generation
+* Changelog and update announcement review/editing
+* Technic-safe plain-text rendering for update/status copy
 * Extension job creation
 * Short-lived job tokens
 * Job status tracking
@@ -195,11 +213,10 @@ The extension is optional.
 
 Users should always be able to complete the workflow manually by:
 
-1. Copying the version number from Wargames Solder
-2. Copying the changelog text from Wargames Solder
-3. Opening the Technic edit/version page themselves
-4. Pasting the values manually
-5. Submitting the Technic form themselves
+1. Copying the version number, changelog text, or update/status text from Wargames Solder
+2. Opening the Technic edit/version page themselves
+3. Pasting the values manually
+4. Submitting the Technic form themselves
 
 This fallback is required because:
 
@@ -258,7 +275,7 @@ src/
 
   technic/
     changelog-publisher.js
-    update-publisher.future.js
+    update-publisher.js
 
 manifests/
   manifest.chromium.json
@@ -303,7 +320,7 @@ The exact structure may change as the project develops, but the core separation 
 * browser-specific packaging
 * Technic page integration
 * Wargames/Solder job contract handling
-* future workflow boundaries
+* reserved workflow boundaries
 
 ---
 

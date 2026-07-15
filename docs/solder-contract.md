@@ -33,7 +33,7 @@ Required request body:
 }
 ```
 
-The claim response should include the target Technic edit URL or enough slug metadata to derive it, plus the version number and changelog text. Patch 003 validates those values, opens the supported Technic manage versions page, fills the detected version/changelog fields, and requires a visible user confirmation before the normal Technic form can be submitted.
+The claim response should include the target Technic edit URL or enough slug metadata to derive it. For `technic_changelog_post` jobs it must include the version number and changelog text. For `technic_update_publish` jobs it must include `extension_payload.update.copy_text` as the authoritative Technic-safe plain-text update/status body. The extension validates those values, opens the supported Technic manage versions page, fills only the detected fields for the claimed workflow, and requires a visible user confirmation before the normal Technic form can be submitted.
 
 ## Payload requirements
 
@@ -72,7 +72,7 @@ Patch 003 adds the page-side MVP for the active `technic_changelog_post` workflo
 - keeps manual copy/export visible as the fallback;
 - shows safe failure states for missing login, missing permissions, unsupported URLs, missing forms/fields, expired/malformed/unsupported jobs, and unsafe payloads.
 
-Patch 003 still does not implement silent submission, Technic credential/session/cookie storage, Wargames internal API token storage, server-side browser automation, future update publishing, login/2FA/CAPTCHA bypass, or any claim of official Technic Platform API posting support.
+Patch 003 still does not implement silent submission, Technic credential/session/cookie storage, Wargames internal API token storage, server-side browser automation, login/2FA/CAPTCHA bypass, or any claim of official Technic Platform API posting support.
 
 ## Patch 004 local end-to-end test notes
 
@@ -92,3 +92,46 @@ See [`local-e2e-solder-handoff-testing.md`](local-e2e-solder-handoff-testing.md)
 
 Patch 004 does not change runtime behaviour, expand browser permissions, implement the future update publisher, store credentials/sessions/tokens, add server-side browser automation, or claim official Technic Platform API posting support.
 
+
+
+## Active Technic update publisher contract
+
+The extension now supports the active Solder update publisher job type:
+
+```text
+technic_update_publish
+```
+
+The legacy placeholder remains reserved and must be rejected:
+
+```text
+technic_update_publish_future
+```
+
+Browser-local readiness probes should advertise both active job types:
+
+```json
+{
+  "supports": ["technic_changelog_post", "technic_update_publish"],
+  "targets": {
+    "technic_changelog_post": { "ready": true },
+    "technic_update_publish": { "ready": true }
+  },
+  "update_target_ready": true
+}
+```
+
+For `technic_update_publish` claims, the extension expects Solder to provide:
+
+```text
+job.job_type = technic_update_publish
+extension_payload.update.copy_text
+extension_payload.update.length
+extension_payload.update.character_limit = 255
+manual_copy_export.copy_text
+safety.user_confirmation_required_before_submit = true
+```
+
+`extension_payload.update.copy_text` is authoritative. Solder has already stripped Discord-only Markdown, preserved intentional readable text where possible, and shortened the final update/status body to Technic's 255-character limit. The extension validates it defensively, rejects empty or over-limit values, and does not rebuild it from the Discord draft.
+
+The update publisher flow opens or focuses the supported Technic edit/version page, verifies the page and expected update/status field, fills only that field, shows a visible confirmation preview, submits only after user confirmation, calls `complete` only after the confirmed submit attempt, and calls `fail` with a safe reason on cancel or blockers. Manual copy/export remains visible as the fallback, and the extension still does not implement silent submission or official Technic Platform API posting support.

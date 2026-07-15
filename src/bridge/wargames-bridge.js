@@ -6,6 +6,8 @@
   const PROBE_EVENT_NAME = 'wgh:browser-extension-probe';
   const MESSAGE_START_TECHNIC_JOB = 'WGH_START_TECHNIC_JOB';
   const ACTIVE_JOB_TYPE = 'technic_changelog_post';
+  const UPDATE_JOB_TYPE = 'technic_update_publish';
+  const ACTIVE_JOB_TYPES = [ACTIVE_JOB_TYPE, UPDATE_JOB_TYPE];
   const RESERVED_JOB_TYPES = new Set(['technic_update_publish_future']);
   const extensionApi = globalThis.browser || globalThis.chrome;
 
@@ -72,12 +74,12 @@
     }
 
     const jobType = firstString(detail, ['job_type', 'jobType']);
-    if (jobType !== ACTIVE_JOB_TYPE) {
+    if (!ACTIVE_JOB_TYPES.includes(jobType)) {
       return {
         ok: false,
         message: RESERVED_JOB_TYPES.has(jobType)
           ? 'That Wargames extension job type is reserved but not implemented yet.'
-          : 'This extension version only supports Technic changelog posting.'
+          : 'This extension version only supports Technic changelog and update publishing.'
       };
     }
 
@@ -154,10 +156,10 @@
     try {
       const response = await extensionApi.runtime.sendMessage(validation.value);
       if (!response?.ok) {
-        showPageNotice(response?.message || 'Could not start the Technic changelog handoff.', 'error');
+        showPageNotice(response?.message || 'Could not start the Technic handoff.', 'error');
         return;
       }
-      showPageNotice('The Wargames Technic changelog job was validated. The extension will open the normal Technic manage versions page and require visible confirmation before submission.');
+      showPageNotice('The Wargames Technic job was validated. The extension will open the normal Technic manage page and require visible confirmation before submission.');
     } catch (error) {
       showPageNotice(`Could not contact the WGH extension: ${redactSensitiveText(error?.message || String(error))}`, 'error');
     }
@@ -167,10 +169,16 @@
     window.dispatchEvent(new CustomEvent(READY_EVENT_NAME, {
       detail: {
         extension: 'WGH Browser Extension',
-        supports: [ACTIVE_JOB_TYPE],
+        supports: ACTIVE_JOB_TYPES.slice(),
         reserved: Array.from(RESERVED_JOB_TYPES),
+        targets: {
+          technic_changelog_post: { ready: true },
+          technic_update_publish: { ready: true }
+        },
+        update_target_ready: true,
         patch_scope: 'technic_form_fill_confirmation_safety',
         form_filling_implemented: true,
+        update_publisher_implemented: true,
         user_confirmation_required: true,
         silent_submission_enabled: false
       }

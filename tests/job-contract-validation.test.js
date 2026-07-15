@@ -75,12 +75,75 @@ function validClaim(overrides = {}) {
   };
 }
 
+
+function validUpdateClaim(overrides = {}) {
+  return validClaim({
+    job: {
+      job_uuid: 'technic-extension-job-20260701120000-abcdef123456',
+      job_type: 'technic_update_publish',
+      status: 'claimed',
+      expires_at: future,
+      technic_platform_slug: 'example-pack',
+      version_number: '1.2.3',
+      internal_api_token_exposed: false,
+      technic_credentials_stored: false,
+      technic_session_tokens_stored: false,
+      technic_cookies_stored: false
+    },
+    payload: {
+      schema_version: 1,
+      job: {
+        job_uuid: 'technic-extension-job-20260701120000-abcdef123456',
+        job_type: 'technic_update_publish',
+        status: 'created',
+        expires_at: future,
+        token_hash_exposed: false,
+        internal_api_token_exposed: false
+      },
+      target: {
+        technic_platform_slug: 'example-pack',
+        target_url_status: 'extension_target_ready',
+        version_number: '1.2.3'
+      },
+      extension_payload: {
+        content_type: 'update',
+        target: {
+          technic_platform_slug: 'example-pack',
+          version_number: '1.2.3'
+        },
+        update: {
+          title: 'Example Pack 1.2.3',
+          copy_text: 'Update now available: 1.2.3',
+          length: 27,
+          character_limit: 255
+        }
+      },
+      safety: {
+        technic_platform_api_posting_supported: false,
+        backend_technic_posting_enabled: false,
+        server_side_browser_automation_enabled: false,
+        login_bypass_enabled: false,
+        credentials_included: false,
+        session_tokens_included: false,
+        cookies_included: false,
+        user_initiated_flow_required: true,
+        user_confirmation_required_before_submit: true
+      }
+    },
+    ...overrides
+  });
+}
+
 test('validates Wargames launch payloads from the Solder handoff contract', () => {
   const result = validateLaunchPayload(validLaunch(), now);
   assert.equal(result.ok, true);
   assert.equal(result.value.apiBaseUrl, 'https://solder.wargames.host');
   assert.equal(result.value.jobType, 'technic_changelog_post');
   assert.equal(result.value.jobToken, token);
+
+  const update = validateLaunchPayload(validLaunch({ job_type: 'technic_update_publish' }), now);
+  assert.equal(update.ok, true);
+  assert.equal(update.value.jobType, 'technic_update_publish');
 });
 
 test('rejects malformed, expired, and unsupported launch payloads before fetch', () => {
@@ -101,6 +164,16 @@ test('validates claimed Solder job payloads and derives safe Technic targets', (
 });
 
 
+
+test('validates active Technic update publish claim payloads from Solder', () => {
+  const result = validateClaimResponse(validUpdateClaim(), now);
+  assert.equal(result.ok, true);
+  assert.equal(result.value.jobType, 'technic_update_publish');
+  assert.equal(result.value.technicUrl, 'https://www.technicpack.net/modpack/edit/example-pack/versions');
+  assert.equal(result.value.updateTitle, 'Example Pack 1.2.3');
+  assert.equal(result.value.updateText, 'Update now available: 1.2.3');
+  assert.equal(result.value.updateCharacterLimit, 255);
+});
 
 test('normalizes a legacy Technic dashboard URL to the edit versions route without requiring dashboard permissions', () => {
   const result = validateClaimResponse(validClaim({
@@ -147,6 +220,24 @@ test('rejects unsafe or incomplete claimed payloads', () => {
     job: { job_type: 'technic_update_publish_future', expires_at: future },
     payload: { job: { job_type: 'technic_update_publish_future', expires_at: future } }
   }), now).code, 'reserved_job_type');
+
+  assert.equal(validateClaimResponse(validUpdateClaim({
+    payload: {
+      job: { job_type: 'technic_update_publish', expires_at: future },
+      target: { technic_platform_slug: 'example-pack', version_number: '1.2.3' },
+      extension_payload: { update: { copy_text: 'x'.repeat(256), length: 256, character_limit: 255 } },
+      safety: { credentials_included: false, session_tokens_included: false, cookies_included: false }
+    }
+  }), now).code, 'update_text_too_long');
+
+  assert.equal(validateClaimResponse(validUpdateClaim({
+    payload: {
+      job: { job_type: 'technic_update_publish', expires_at: future },
+      target: { technic_platform_slug: 'example-pack', version_number: '1.2.3' },
+      extension_payload: { update: { copy_text: 'Short update text', length: 300, character_limit: 255 } },
+      safety: { credentials_included: false, session_tokens_included: false, cookies_included: false }
+    }
+  }), now).code, 'update_text_too_long');
 
   assert.equal(validateClaimResponse(validClaim({
     job: {
