@@ -79,10 +79,11 @@ https://*.wargames.host/*
 https://*.wargames.uk/*
 ```
 
-Expected Technic host patterns are limited to the manage versions pages used by the current changelog workflow:
+Expected Technic host patterns are limited to the manage versions page used by changelog posting and the modpack updates page used by update/status posting:
 
 ```text
 https://www.technicpack.net/modpack/edit/*/versions
+https://www.technicpack.net/modpack/*/updates
 ```
 
 The extension should not request `<all_urls>`, `https://*/*`, or any retired Wargames production host pattern. Patch 005 also removes the explicit `tabs` permission; the background coordinator still creates and messages workflow tabs, but the manifest should not trigger a separate Chromium-family browsing-history warning from `tabs`.
@@ -138,7 +139,7 @@ For later workflow patches, record these checks without sharing secrets:
 - whether permissions matched the expected manifest;
 - whether the Wargames icon appears in the extension list/toolbar area where the browser displays it;
 - whether `*.wargames.host`, `*.wargames.uk`, `*.wargames.localhost`, and `solder.wargames.localhost` are present while retired Wargames production domains are absent;
-- whether Technic access remains limited to manage versions pages;
+- whether Technic access remains limited to manage versions pages and modpack updates pages;
 - whether the workflow fell back safely when a page, payload, or permission was missing;
 - whether the user saw a visible confirmation before any Technic form submission.
 

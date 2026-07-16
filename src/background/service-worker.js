@@ -124,6 +124,55 @@
     return '';
   }
 
+  function validateTechnicUpdatesUrl(value) {
+    if (typeof value !== 'string' || value.trim() === '') {
+      return '';
+    }
+    try {
+      const url = new URL(value.trim());
+      if (url.protocol !== 'https:' || url.hostname !== 'www.technicpack.net') {
+        return '';
+      }
+      const path = url.pathname.replace(/\/+$/, '');
+      const updatesMatch = path.match(/^\/modpack\/([A-Za-z0-9-]+)\/updates$/);
+      if (updatesMatch) {
+        return `https://www.technicpack.net/modpack/${encodeURIComponent(updatesMatch[1])}/updates`;
+      }
+    } catch (_) {
+      return '';
+    }
+    return '';
+  }
+
+  function extractTechnicSlug(value) {
+    if (typeof value !== 'string' || value.trim() === '') {
+      return '';
+    }
+    try {
+      const url = new URL(value.trim());
+      if (url.protocol !== 'https:' || url.hostname !== 'www.technicpack.net') {
+        return '';
+      }
+      const path = url.pathname.replace(/\/+$/, '');
+      const updatesMatch = path.match(/^\/modpack\/([A-Za-z0-9-]+)\/updates$/);
+      if (updatesMatch) {
+        return updatesMatch[1];
+      }
+      const editMatch = path.match(/^\/modpack\/edit\/([A-Za-z0-9-]+)\/versions$/);
+      if (editMatch) {
+        return editMatch[1];
+      }
+      const dashboardMatch = path.match(/^\/dashboard\/modpack\/([A-Za-z0-9-]+)\/versions$/);
+      if (dashboardMatch) {
+        return dashboardMatch[1];
+      }
+    } catch (_) {
+      return '';
+    }
+    return '';
+  }
+
+
   function deriveTechnicVersionsUrlFromSlug(value) {
     if (typeof value !== 'string') {
       return '';
@@ -133,6 +182,18 @@
       return '';
     }
     return `https://www.technicpack.net/modpack/edit/${encodeURIComponent(slug)}/versions`;
+  }
+
+
+  function deriveTechnicUpdatesUrlFromSlug(value) {
+    if (typeof value !== 'string') {
+      return '';
+    }
+    const slug = value.trim();
+    if (!/^[a-z0-9][a-z0-9-]{1,128}$/i.test(slug)) {
+      return '';
+    }
+    return `https://www.technicpack.net/modpack/${encodeURIComponent(slug)}/updates`;
   }
 
   function validateStartMessage(message) {
@@ -230,25 +291,43 @@
 
   function extractClaimPreview(responseJson) {
     const { job, payload, target } = extractClaimPayload(responseJson);
-    const explicitUrl = validateTechnicVersionsUrl(
-      target.technic_platform_edit_versions_url
-        || payload.technic_platform_edit_versions_url
-        || job.technic_platform_edit_versions_url
-        || target.target_url
-        || payload.target_url
-        || job.target_url
-        || getDeep(payload, ['extension_payload.target.technic_platform_edit_versions_url', 'extension_payload.target.target_url'])
-        || ''
-    );
-    const slugUrl = deriveTechnicVersionsUrlFromSlug(
-      target.technic_platform_slug
-        || payload.technic_platform_slug
-        || job.technic_platform_slug
-        || payload.pack?.slug
-        || getDeep(payload, ['extension_payload.target.technic_platform_slug', 'extension_payload.pack.slug'])
-        || ''
-    );
     const jobType = String(job.job_type || payload.job?.job_type || getDeep(payload, ['extension_payload.job_type']) || '').trim();
+    const explicitTargetUrl = target.target_url
+      || payload.target_url
+      || job.target_url
+      || getDeep(payload, ['extension_payload.target.target_url'])
+      || '';
+    const versionsUrlCandidate = target.technic_platform_edit_versions_url
+      || payload.technic_platform_edit_versions_url
+      || job.technic_platform_edit_versions_url
+      || getDeep(payload, ['extension_payload.target.technic_platform_edit_versions_url'])
+      || explicitTargetUrl;
+    const updatesUrlCandidate = target.technic_platform_updates_url
+      || target.technic_platform_update_url
+      || target.technic_platform_status_url
+      || payload.technic_platform_updates_url
+      || payload.technic_platform_update_url
+      || payload.technic_platform_status_url
+      || job.technic_platform_updates_url
+      || job.technic_platform_update_url
+      || job.technic_platform_status_url
+      || getDeep(payload, [
+        'extension_payload.target.technic_platform_updates_url',
+        'extension_payload.target.technic_platform_update_url',
+        'extension_payload.target.technic_platform_status_url'
+      ])
+      || explicitTargetUrl;
+    const slug = target.technic_platform_slug
+      || payload.technic_platform_slug
+      || job.technic_platform_slug
+      || payload.pack?.slug
+      || getDeep(payload, ['extension_payload.target.technic_platform_slug', 'extension_payload.pack.slug'])
+      || extractTechnicSlug(versionsUrlCandidate)
+      || extractTechnicSlug(updatesUrlCandidate)
+      || '';
+    const technicUrl = jobType === UPDATE_JOB_TYPE
+      ? (validateTechnicUpdatesUrl(updatesUrlCandidate) || deriveTechnicUpdatesUrlFromSlug(slug))
+      : (validateTechnicVersionsUrl(versionsUrlCandidate) || deriveTechnicVersionsUrlFromSlug(slug));
     const versionNumber = String(getDeep(payload, [
       'target.version_number',
       'extension_payload.target.version_number',
@@ -283,7 +362,7 @@
     ]) || MAX_UPDATE_TEXT_LENGTH);
     return {
       jobType,
-      technicUrl: explicitUrl || slugUrl,
+      technicUrl,
       versionNumber,
       changelogText,
       updateText,
@@ -334,7 +413,7 @@
 
     const preview = extractClaimPreview(responseJson);
     if (!preview.technicUrl) {
-      return { ok: false, message: 'The claimed Solder extension job did not include a supported Technic manage versions URL or slug.' };
+      return { ok: false, message: 'The claimed Solder extension job did not include a supported Technic target URL or slug.' };
     }
     if (jobType === ACTIVE_JOB_TYPE && (!preview.versionNumber || !preview.changelogText)) {
       return { ok: false, message: 'The claimed Solder extension job did not include a version number and changelog text.' };

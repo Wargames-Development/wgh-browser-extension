@@ -69,6 +69,54 @@ export function validateTechnicVersionsUrl(value) {
   return '';
 }
 
+export function validateTechnicUpdatesUrl(value) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return '';
+  }
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== 'https:' || url.hostname !== 'www.technicpack.net') {
+      return '';
+    }
+    const path = url.pathname.replace(/\/+$/, '');
+    const updatesMatch = path.match(/^\/modpack\/([A-Za-z0-9-]+)\/updates$/);
+    if (updatesMatch) {
+      return `https://www.technicpack.net/modpack/${encodeURIComponent(updatesMatch[1])}/updates`;
+    }
+  } catch (_) {
+    return '';
+  }
+  return '';
+}
+
+export function extractTechnicSlug(value) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return '';
+  }
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== 'https:' || url.hostname !== 'www.technicpack.net') {
+      return '';
+    }
+    const path = url.pathname.replace(/\/+$/, '');
+    const updatesMatch = path.match(/^\/modpack\/([A-Za-z0-9-]+)\/updates$/);
+    if (updatesMatch) {
+      return updatesMatch[1];
+    }
+    const editMatch = path.match(/^\/modpack\/edit\/([A-Za-z0-9-]+)\/versions$/);
+    if (editMatch) {
+      return editMatch[1];
+    }
+    const dashboardMatch = path.match(/^\/dashboard\/modpack\/([A-Za-z0-9-]+)\/versions$/);
+    if (dashboardMatch) {
+      return dashboardMatch[1];
+    }
+  } catch (_) {
+    return '';
+  }
+  return '';
+}
+
 export function deriveTechnicVersionsUrlFromSlug(value) {
   if (typeof value !== 'string') {
     return '';
@@ -78,4 +126,16 @@ export function deriveTechnicVersionsUrlFromSlug(value) {
     return '';
   }
   return `https://www.technicpack.net/modpack/edit/${encodeURIComponent(slug)}/versions`;
+}
+
+
+export function deriveTechnicUpdatesUrlFromSlug(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const slug = value.trim();
+  if (!/^[a-z0-9][a-z0-9-]{1,128}$/i.test(slug)) {
+    return '';
+  }
+  return `https://www.technicpack.net/modpack/${encodeURIComponent(slug)}/updates`;
 }

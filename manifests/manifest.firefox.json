@@ -8,7 +8,8 @@
     "https://*.wargames.localhost/*",
     "https://*.wargames.host/*",
     "https://*.wargames.uk/*",
-    "https://www.technicpack.net/modpack/edit/*/versions"
+    "https://www.technicpack.net/modpack/edit/*/versions",
+    "https://www.technicpack.net/modpack/*/updates"
   ],
   "background": {
     "scripts": [
@@ -30,7 +31,8 @@
     },
     {
       "matches": [
-        "https://www.technicpack.net/modpack/edit/*/versions"
+        "https://www.technicpack.net/modpack/edit/*/versions",
+        "https://www.technicpack.net/modpack/*/updates"
       ],
       "js": [
         "src/technic/changelog-publisher.js",

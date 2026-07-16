@@ -17,7 +17,8 @@ const expectedWargamesMatches = [
   'https://*.wargames.uk/*'
 ];
 const expectedTechnicMatches = [
-  'https://www.technicpack.net/modpack/edit/*/versions'
+  'https://www.technicpack.net/modpack/edit/*/versions',
+  'https://www.technicpack.net/modpack/*/updates'
 ];
 const expectedHostPermissions = [...expectedWargamesMatches, ...expectedTechnicMatches];
 const retiredWargamesDomain = ['wargames', 'hosting'].join('.');
@@ -70,7 +71,7 @@ test('Patch 005 docs and source files do not preserve retired Wargames domains',
   }
 });
 
-test('Patch 007 content scripts use only the confirmed Technic edit versions route', () => {
+test('Patch 008 content scripts use only the confirmed Technic versions and updates routes', () => {
   for (const target of targets) {
     const manifest = readManifest(target);
     assert.deepEqual(manifest.content_scripts[0].matches, expectedWargamesMatches);

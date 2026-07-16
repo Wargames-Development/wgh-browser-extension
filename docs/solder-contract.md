@@ -33,7 +33,7 @@ Required request body:
 }
 ```
 
-The claim response should include the target Technic edit URL or enough slug metadata to derive it. For `technic_changelog_post` jobs it must include the version number and changelog text. For `technic_update_publish` jobs it must include `extension_payload.update.copy_text` as the authoritative Technic-safe plain-text update/status body. The extension validates those values, opens the supported Technic manage versions page, fills only the detected fields for the claimed workflow, and requires a visible user confirmation before the normal Technic form can be submitted.
+The claim response should include the target Technic URL or enough slug metadata to derive it. For `technic_changelog_post` jobs it must include the version number and changelog text. For `technic_update_publish` jobs it must include `extension_payload.update.copy_text` as the authoritative Technic-safe plain-text update/status body. The extension validates those values, opens the supported Technic target page, fills only the detected fields for the claimed workflow, and requires a visible user confirmation before the normal Technic form can be submitted.
 
 ## Payload requirements
 
@@ -134,4 +134,4 @@ safety.user_confirmation_required_before_submit = true
 
 `extension_payload.update.copy_text` is authoritative. Solder has already stripped Discord-only Markdown, preserved intentional readable text where possible, and shortened the final update/status body to Technic's 255-character limit. The extension validates it defensively, rejects empty or over-limit values, and does not rebuild it from the Discord draft.
 
-The update publisher flow opens or focuses the supported Technic edit/version page, verifies the page and expected update/status field, fills only that field, shows a visible confirmation preview, submits only after user confirmation, calls `complete` only after the confirmed submit attempt, and calls `fail` with a safe reason on cancel or blockers. Manual copy/export remains visible as the fallback, and the extension still does not implement silent submission or official Technic Platform API posting support.
+The update publisher flow opens or focuses the supported Technic modpack updates page, verifies the page and expected update/status field, fills only that field, shows a visible confirmation preview, submits only after user confirmation, calls `complete` only after the confirmed submit attempt, and calls `fail` with a safe reason on cancel or blockers. Manual copy/export remains visible as the fallback, and the extension still does not implement silent submission or official Technic Platform API posting support.

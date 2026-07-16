@@ -108,13 +108,38 @@
     return '';
   }
 
+  function validateTechnicUpdatesUrl(value) {
+    if (typeof value !== 'string' || value.trim() === '') {
+      return '';
+    }
+    try {
+      const url = new URL(value.trim());
+      if (url.protocol !== 'https:' || url.hostname !== 'www.technicpack.net') {
+        return '';
+      }
+      const path = url.pathname.replace(/\/+$/, '');
+      const updatesMatch = path.match(/^\/modpack\/([A-Za-z0-9-]+)\/updates$/);
+      if (updatesMatch) {
+        return `https://www.technicpack.net/modpack/${encodeURIComponent(updatesMatch[1])}/updates`;
+      }
+    } catch (_) {
+      return '';
+    }
+    return '';
+  }
+
+
   function extractTechnicSlug(value) {
-    const supportedUrl = validateTechnicVersionsUrl(value);
+    const supportedUrl = validateTechnicVersionsUrl(value) || validateTechnicUpdatesUrl(value);
     if (!supportedUrl) {
       return '';
     }
     try {
       const pathParts = new URL(supportedUrl).pathname.split('/').filter(Boolean);
+      const updatesIndex = pathParts.lastIndexOf('updates');
+      if (updatesIndex > 0) {
+        return pathParts[updatesIndex - 1];
+      }
       const versionsIndex = pathParts.lastIndexOf('versions');
       return versionsIndex > 0 ? pathParts[versionsIndex - 1] : '';
     } catch (_) {
@@ -141,7 +166,9 @@
 
     const preview = message.preview || {};
     const jobType = String(preview.jobType || '').trim();
-    const technicUrl = validateTechnicVersionsUrl(String(preview.technicUrl || '').trim());
+    const technicUrl = jobType === UPDATE_JOB_TYPE
+      ? validateTechnicUpdatesUrl(String(preview.technicUrl || '').trim())
+      : validateTechnicVersionsUrl(String(preview.technicUrl || '').trim());
     const versionNumber = String(preview.versionNumber || '').trim();
     const changelogText = String(preview.changelogText || '').trim();
     const updateText = String(preview.updateText || '').trim();
@@ -765,12 +792,17 @@
       return normalized;
     }
 
-    const currentUrl = validateTechnicVersionsUrl(String(window.location?.href || ''));
+    const isUpdateJob = preview.jobType === UPDATE_JOB_TYPE;
+    const currentUrl = isUpdateJob
+      ? validateTechnicUpdatesUrl(String(window.location?.href || ''))
+      : validateTechnicVersionsUrl(String(window.location?.href || ''));
     if (!currentUrl) {
       const result = {
         ok: false,
         code: 'unsupported_technic_url',
-        message: 'This page is not a supported Technic manage versions URL. No Technic form was changed; use manual copy/export instead.'
+        message: isUpdateJob
+          ? 'This page is not a supported Technic modpack updates URL. No Technic form was changed; use manual copy/export instead.'
+          : 'This page is not a supported Technic manage versions URL. No Technic form was changed; use manual copy/export instead.'
       };
       showFailure(preview, result.code, result.message, preview.confirmationId);
       return result;
@@ -782,7 +814,9 @@
       const result = {
         ok: false,
         code: 'technic_target_mismatch',
-        message: 'The current Technic manage versions page does not match the Wargames/Solder target pack. No Technic form was changed; use manual copy/export instead.'
+        message: isUpdateJob
+          ? 'The current Technic updates page does not match the Wargames/Solder target pack. No Technic form was changed; use manual copy/export instead.'
+          : 'The current Technic manage versions page does not match the Wargames/Solder target pack. No Technic form was changed; use manual copy/export instead.'
       };
       showFailure(preview, result.code, result.message, preview.confirmationId);
       return result;

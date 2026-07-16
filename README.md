@@ -6,7 +6,7 @@
 
 **Wargames Hosting Browser Extension** is a browser extension project for approved Wargames Hosting browser-assisted workflows.
 
-The active workflows are the **Technic Changelog Publisher** and **Technic Update Publisher**, which help a Wargames Solder user take reviewed release text, open the normal Technic Platform manage versions page in their own browser session, fill only the expected fields, and submit only after a visible user confirmation.
+The active workflows are the **Technic Changelog Publisher** and **Technic Update Publisher**, which help a Wargames Solder user take reviewed release text, open the normal Technic Platform versions or updates page in their own browser session, fill only the expected fields, and submit only after a visible user confirmation.
 
 Repository: https://github.com/Wargames-Development/wgh-browser-extension
 
@@ -29,7 +29,7 @@ Current scope:
 * Let the user cancel safely and use manual copy/export
 * Redact short-lived job tokens in user-facing errors
 * Document the local Solder to extension to Technic changelog test path
-* Keep manifest host access scoped to corrected Wargames domains and Technic manage versions pages
+* Keep manifest host access scoped to corrected Wargames domains, Technic manage versions pages, and Technic modpack updates pages
 * Ship Wargames extension icon assets in Chromium and Firefox builds
 * Avoid the extra `tabs` permission so local Chromium-family testing does not show an unrelated browsing-history permission warning
 * Advertise active browser-local capability for `technic_update_publish` while keeping the legacy `_future` placeholder reserved
@@ -123,7 +123,7 @@ Planned browser targets:
 
 Chrome, Edge, and Opera GX all use the Chromium build. Firefox uses the Firefox build. Opera GX is treated as a Chromium-family target unless testing shows a browser-specific issue.
 
-Manifest host access is intentionally limited to local Wargames development domains, the Wargames-owned `*.wargames.host` and `*.wargames.uk` domains, and the two supported Technic manage versions URL patterns. No retired Wargames production domain should appear in source files, manifests, or built extension packages. The extension also ships Wargames icon assets in each browser build and does not request the `tabs` permission.
+Manifest host access is intentionally limited to local Wargames development domains, the Wargames-owned `*.wargames.host` and `*.wargames.uk` domains, the Technic manage versions route for changelogs, and the Technic modpack updates route for update/status posts. No retired Wargames production domain should appear in source files, manifests, or built extension packages. The extension also ships Wargames icon assets in each browser build and does not request the `tabs` permission.
 
 See [`docs/browser-support.md`](docs/browser-support.md), [`docs/local-extension-testing.md`](docs/local-extension-testing.md), and [`docs/local-e2e-solder-handoff-testing.md`](docs/local-e2e-solder-handoff-testing.md) for local loading and end-to-end Solder handoff test notes.
 
@@ -159,7 +159,7 @@ Current purpose:
 * Claim the job from Wargames Solder
 * Treat `extension_payload.update.copy_text` as the authoritative Technic-safe update/status text
 * Defensively reject empty update text or update text longer than 255 characters
-* Open the relevant Technic Platform edit/version page only after validation
+* Open the relevant Technic Platform modpack updates page only after validation
 * Fill only the expected update/status message field
 * Require visible user confirmation before normal Technic form submission
 * Allow cancellation and restore the original update/status field value
@@ -214,7 +214,7 @@ The extension is optional.
 Users should always be able to complete the workflow manually by:
 
 1. Copying the version number, changelog text, or update/status text from Wargames Solder
-2. Opening the Technic edit/version page themselves
+2. Opening the relevant Technic page themselves
 3. Pasting the values manually
 4. Submitting the Technic form themselves
 

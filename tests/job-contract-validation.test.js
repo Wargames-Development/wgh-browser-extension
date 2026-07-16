@@ -169,10 +169,39 @@ test('validates active Technic update publish claim payloads from Solder', () =>
   const result = validateClaimResponse(validUpdateClaim(), now);
   assert.equal(result.ok, true);
   assert.equal(result.value.jobType, 'technic_update_publish');
-  assert.equal(result.value.technicUrl, 'https://www.technicpack.net/modpack/edit/example-pack/versions');
+  assert.equal(result.value.technicUrl, 'https://www.technicpack.net/modpack/example-pack/updates');
   assert.equal(result.value.updateTitle, 'Example Pack 1.2.3');
   assert.equal(result.value.updateText, 'Update now available: 1.2.3');
   assert.equal(result.value.updateCharacterLimit, 255);
+});
+
+test('uses a Solder-provided Technic updates URL for active update jobs', () => {
+  const result = validateClaimResponse(validUpdateClaim({
+    payload: {
+      job: {
+        job_uuid: 'technic-extension-job-20260701120000-abcdef123456',
+        job_type: 'technic_update_publish',
+        status: 'created',
+        expires_at: future,
+        token_hash_exposed: false,
+        internal_api_token_exposed: false
+      },
+      target: {
+        technic_platform_slug: 'example-pack',
+        technic_platform_updates_url: 'https://www.technicpack.net/modpack/wgtest/updates',
+        version_number: '1.2.3'
+      },
+      extension_payload: { update: { copy_text: 'Update ready', length: 12, character_limit: 255 } },
+      safety: {
+        credentials_included: false,
+        session_tokens_included: false,
+        cookies_included: false
+      }
+    }
+  }), now);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.value.technicUrl, 'https://www.technicpack.net/modpack/wgtest/updates');
 });
 
 test('normalizes a legacy Technic dashboard URL to the edit versions route without requiring dashboard permissions', () => {

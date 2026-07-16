@@ -1,6 +1,7 @@
 import {
   ACTIVE_JOB_TYPE,
   UPDATE_JOB_TYPE,
+  deriveTechnicUpdatesUrlFromSlug,
   deriveTechnicVersionsUrlFromSlug,
   isFutureIsoDate,
   isProbablyExtensionJob,
@@ -8,6 +9,8 @@ import {
   isReservedJobType,
   isSupportedJobType,
   normalizeApiBaseUrl,
+  extractTechnicSlug,
+  validateTechnicUpdatesUrl,
   validateTechnicVersionsUrl
 } from './validation.js';
 import { isSensitiveKey } from './redaction.js';
@@ -132,25 +135,43 @@ export function extractClaimPayload(result) {
 
 export function extractClaimPreview(result) {
   const { job, payload, target } = extractClaimPayload(result);
-  const explicitUrl = validateTechnicVersionsUrl(
-    target.technic_platform_edit_versions_url
-      || payload.technic_platform_edit_versions_url
-      || job.technic_platform_edit_versions_url
-      || target.target_url
-      || payload.target_url
-      || job.target_url
-      || getDeep(payload, ['extension_payload.target.technic_platform_edit_versions_url', 'extension_payload.target.target_url'])
-      || ''
-  );
-  const slugUrl = deriveTechnicVersionsUrlFromSlug(
-    target.technic_platform_slug
-      || payload.technic_platform_slug
-      || job.technic_platform_slug
-      || payload.pack?.slug
-      || getDeep(payload, ['extension_payload.target.technic_platform_slug', 'extension_payload.pack.slug'])
-      || ''
-  );
   const jobType = String(job.job_type || payload.job?.job_type || getDeep(payload, ['extension_payload.job_type']) || '').trim();
+  const explicitTargetUrl = target.target_url
+    || payload.target_url
+    || job.target_url
+    || getDeep(payload, ['extension_payload.target.target_url'])
+    || '';
+  const versionsUrlCandidate = target.technic_platform_edit_versions_url
+    || payload.technic_platform_edit_versions_url
+    || job.technic_platform_edit_versions_url
+    || getDeep(payload, ['extension_payload.target.technic_platform_edit_versions_url'])
+    || explicitTargetUrl;
+  const updatesUrlCandidate = target.technic_platform_updates_url
+    || target.technic_platform_update_url
+    || target.technic_platform_status_url
+    || payload.technic_platform_updates_url
+    || payload.technic_platform_update_url
+    || payload.technic_platform_status_url
+    || job.technic_platform_updates_url
+    || job.technic_platform_update_url
+    || job.technic_platform_status_url
+    || getDeep(payload, [
+      'extension_payload.target.technic_platform_updates_url',
+      'extension_payload.target.technic_platform_update_url',
+      'extension_payload.target.technic_platform_status_url'
+    ])
+    || explicitTargetUrl;
+  const slug = target.technic_platform_slug
+    || payload.technic_platform_slug
+    || job.technic_platform_slug
+    || payload.pack?.slug
+    || getDeep(payload, ['extension_payload.target.technic_platform_slug', 'extension_payload.pack.slug'])
+    || extractTechnicSlug(versionsUrlCandidate)
+    || extractTechnicSlug(updatesUrlCandidate)
+    || '';
+  const technicUrl = jobType === UPDATE_JOB_TYPE
+    ? (validateTechnicUpdatesUrl(updatesUrlCandidate) || deriveTechnicUpdatesUrlFromSlug(slug))
+    : (validateTechnicVersionsUrl(versionsUrlCandidate) || deriveTechnicVersionsUrlFromSlug(slug));
   const versionNumber = String(getDeep(payload, [
     'target.version_number',
     'extension_payload.target.version_number',
@@ -186,7 +207,7 @@ export function extractClaimPreview(result) {
 
   return {
     jobType,
-    technicUrl: explicitUrl || slugUrl,
+    technicUrl,
     versionNumber,
     changelogText,
     updateText,
@@ -237,7 +258,7 @@ export function validateClaimResponse(responseJson, nowMs = Date.now()) {
 
   const preview = extractClaimPreview(responseJson);
   if (!preview.technicUrl) {
-    return { ok: false, code: 'invalid_technic_target', message: 'The claimed Solder extension job did not include a supported Technic manage versions URL or slug.' };
+    return { ok: false, code: 'invalid_technic_target', message: 'The claimed Solder extension job did not include a supported Technic target URL or slug.' };
   }
   if (jobType === ACTIVE_JOB_TYPE && (!preview.versionNumber || !preview.changelogText)) {
     return { ok: false, code: 'invalid_changelog_payload', message: 'The claimed Solder extension job did not include a version number and changelog text.' };

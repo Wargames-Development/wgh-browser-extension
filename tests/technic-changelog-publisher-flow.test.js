@@ -242,7 +242,7 @@ function findButtonByText(root, text) {
 }
 
 function createTechnicForm(document, state, options = {}) {
-  const form = new FakeElement('form', { class: 'edit-versions-form', action: '/modpack/edit/example-pack/versions' }, state);
+  const form = new FakeElement('form', options.formAttrs || { class: 'edit-versions-form', action: '/modpack/edit/example-pack/versions' }, state);
   if (options.version !== false) {
     form.appendChild(new FakeElement('input', { name: 'version', type: 'text', value: options.initialVersion || '' }, state));
   }
@@ -250,7 +250,7 @@ function createTechnicForm(document, state, options = {}) {
     form.appendChild(new FakeElement('textarea', { name: 'changelog', value: options.initialChangelog || '' }, state));
   }
   if (options.update === true) {
-    form.appendChild(new FakeElement('textarea', { name: 'status_message', value: options.initialUpdate || '' }, state));
+    form.appendChild(new FakeElement('textarea', { name: options.updateName || 'status_message', class: options.updateClass || '', placeholder: options.updatePlaceholder || '', value: options.initialUpdate || '' }, state));
   }
   form.appendChild(new FakeElement('button', { type: 'submit' }, state));
   document.body.appendChild(form);
@@ -281,7 +281,7 @@ function validUpdatePayload(overrides = {}) {
   return validPayload({
     preview: {
       jobType: 'technic_update_publish',
-      technicUrl: 'https://www.technicpack.net/modpack/edit/example-pack/versions',
+      technicUrl: 'https://www.technicpack.net/modpack/example-pack/updates',
       versionNumber: '1.2.3',
       updateTitle: 'Example Pack 1.2.3',
       updateText: 'Update now available: 1.2.3',
@@ -349,6 +349,17 @@ function createHarness({ href = 'https://www.technicpack.net/modpack/edit/exampl
   return { state, document, form };
 }
 
+function createUpdateHarness(options = {}, sendMessageImpl = async () => ({ ok: true })) {
+  return createHarness({
+    href: 'https://www.technicpack.net/modpack/example-pack/updates',
+    ...options,
+    formOptions: {
+      update: true,
+      ...(options.formOptions || {})
+    }
+  }, sendMessageImpl);
+}
+
 function sendContentMessage(state, message) {
   return new Promise((resolve) => {
     const returned = state.listener(message, {}, resolve);
@@ -389,7 +400,7 @@ test('fills Technic version and changelog fields but waits for explicit confirma
 });
 
 test('fills only the Technic update/status field and waits for explicit confirmation before submitting', async () => {
-  const { state, document, form } = createHarness({ formOptions: { update: true } });
+  const { state, document, form } = createUpdateHarness();
   const response = await sendContentMessage(state, validUpdatePayload());
 
   assert.equal(response.ok, true);
@@ -414,8 +425,34 @@ test('fills only the Technic update/status field and waits for explicit confirma
   assert.equal(state.submissions.length, 1);
 });
 
+test('fills the downloaded Technic updates status form selector safely', async () => {
+  const { state, document, form } = createUpdateHarness({
+    href: 'https://www.technicpack.net/modpack/wgtest/updates',
+    formOptions: {
+      formAttrs: { id: 'status-form', action: '/modpack/wgtest/updates' },
+      version: false,
+      changelog: false,
+      updateName: 'status',
+      updateClass: 'status-textarea',
+      updatePlaceholder: 'Got something to say? Share it here...'
+    }
+  });
+  const response = await sendContentMessage(state, validUpdatePayload({
+    preview: {
+      ...validUpdatePayload().preview,
+      technicUrl: 'https://www.technicpack.net/modpack/wgtest/updates'
+    }
+  }));
+
+  assert.equal(response.ok, true);
+  assert.equal(response.code, 'technic_update_form_filled_confirmation_required');
+  assert.equal(form.querySelector('textarea[name="status"]').value, 'Update now available: 1.2.3');
+  assert.equal(state.submissions.length, 0);
+  assert.ok(findButtonByText(document.documentElement, 'Submit Technic form'));
+});
+
 test('update cancel restores original status text and reports safe failure', async () => {
-  const { state, document, form } = createHarness({ formOptions: { update: true, initialUpdate: 'old status' } });
+  const { state, document, form } = createUpdateHarness({ formOptions: { initialUpdate: 'old status' } });
   const response = await sendContentMessage(state, validUpdatePayload());
   assert.equal(response.ok, true);
 
@@ -432,7 +469,7 @@ test('update cancel restores original status text and reports safe failure', asy
 });
 
 test('rejects oversized Technic update payloads before filling fields', async () => {
-  const { state, form } = createHarness({ formOptions: { update: true } });
+  const { state, form } = createUpdateHarness();
   const response = await sendContentMessage(state, validUpdatePayload({
     preview: {
       ...validUpdatePayload().preview,
@@ -523,7 +560,7 @@ test('detects login, permission, missing form, and missing field failure states 
   const missingChangelog = createHarness({ formOptions: { changelog: false } });
   assert.equal((await sendContentMessage(missingChangelog.state, validPayload())).code, 'technic_changelog_field_missing');
 
-  const missingUpdate = createHarness({ formOptions: {} });
+  const missingUpdate = createHarness({ href: 'https://www.technicpack.net/modpack/example-pack/updates', formOptions: {} });
   assert.equal((await sendContentMessage(missingUpdate.state, validUpdatePayload())).code, 'technic_update_field_missing');
 });
 

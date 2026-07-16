@@ -243,7 +243,7 @@ test('claims a valid Technic update publish job and sends only safe update previ
   const response = await sendRuntimeMessage(state, startMessage({ jobType: 'technic_update_publish' }));
 
   assert.equal(response.ok, true);
-  assert.equal(JSON.stringify(state.createdTabs), JSON.stringify([{ url: 'https://www.technicpack.net/modpack/edit/example-pack/versions', active: true }]));
+  assert.equal(JSON.stringify(state.createdTabs), JSON.stringify([{ url: 'https://www.technicpack.net/modpack/example-pack/updates', active: true }]));
 
   state.onUpdated(42, { status: 'complete' });
   assert.equal(state.sentMessages.length, 1);
@@ -253,6 +253,29 @@ test('claims a valid Technic update publish job and sends only safe update previ
   assert.equal(payload.preview.updateCharacterLimit, 255);
   assert.equal(payload.preview.changelogText, '');
   assert.equal(JSON.stringify(payload).includes(token), false);
+});
+
+test('uses the explicit Technic updates page URL when Solder provides one', async () => {
+  const state = createHarness(async () => ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify(validUpdateClaimResponse({
+      payload: {
+        job: { job_type: 'technic_update_publish', expires_at: future },
+        target: {
+          technic_platform_updates_url: 'https://www.technicpack.net/modpack/wgtest/updates',
+          technic_platform_slug: 'example-pack',
+          version_number: '1.2.3'
+        },
+        extension_payload: { update: { copy_text: 'Update ready', length: 12, character_limit: 255 } },
+        safety: { credentials_included: false, session_tokens_included: false, cookies_included: false }
+      }
+    }))
+  }));
+  const response = await sendRuntimeMessage(state, startMessage({ jobType: 'technic_update_publish' }));
+
+  assert.equal(response.ok, true);
+  assert.equal(JSON.stringify(state.createdTabs), JSON.stringify([{ url: 'https://www.technicpack.net/modpack/wgtest/updates', active: true }]));
 });
 
 test('rejects Technic update publish jobs over the 255 character status limit', async () => {
