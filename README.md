@@ -62,7 +62,7 @@ The current `technic_changelog_post` flow is:
 10. The extension shows a visible confirmation dialog.
 11. The user can cancel and restore the original field values, or explicitly start the normal Technic form submission.
 
-The current `technic_update_publish` flow uses the same short-lived job claim and confirmation model, but fills only the Technic update/status message field. Solder provides `extension_payload.update.copy_text` as the authoritative plain-text update body, already stripped of Discord-only Markdown and capped at Technic's 255-character update/status limit. The extension validates that value defensively and rejects empty or over-limit update bodies instead of rebuilding or reformatting the Discord draft.
+The current `technic_update_publish` flow uses the same short-lived job claim and confirmation model, but fills only the Technic update/status message field. Solder provides `extension_payload.update.copy_text` as the authoritative plain-text update body, already stripped of Discord-only Markdown and capped at Technic's 255-character update/status limit. The extension validates that value defensively and rejects empty or over-limit update bodies instead of rebuilding or reformatting the Discord draft. Its confirmation dialog focuses on the single update/status body and keeps extra manual copy/export details collapsed so update jobs do not show changelog-style version/build, changelog, or update-title fields as normal visible sections.
 
 Completion reporting means the extension reached the user-confirmed submission-start step. It does **not** prove final Technic server-side acceptance after page navigation.
 
