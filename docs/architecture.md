@@ -32,7 +32,7 @@ src/bridge/wargames-bridge.js
   Runs on Wargames pages and receives user-initiated job handoff events.
 
 src/technic/changelog-publisher.js
-  Runs on scoped Technic versions and updates pages, fills the expected version/build and changelog fields for `technic_changelog_post`, fills only the update/status message field for `technic_update_publish`, and requires visible user confirmation before normal form submission.
+  Runs on scoped Technic versions and updates pages, fills the expected version/build and changelog fields for `technic_changelog_post`, fills only the update/status message field for `technic_update_publish`, and requires visible user confirmation before normal form submission. The update confirmation UI keeps the main review focused on the update/status body and collapses manual fallback details.
 
 src/technic/update-publisher.js
   Metadata boundary documenting the active `technic_update_publish` contract and the reserved legacy `technic_update_publish_future` identifier.

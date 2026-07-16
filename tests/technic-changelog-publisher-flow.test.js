@@ -241,6 +241,14 @@ function findButtonByText(root, text) {
   return findElement(root, (item) => item.tagName === 'BUTTON' && item.textContent === text);
 }
 
+function previewLabels(root) {
+  return root.querySelectorAll('label').map((item) => item.textContent);
+}
+
+function findElementByText(root, tagName, text) {
+  return findElement(root, (item) => item.tagName === String(tagName).toUpperCase() && item.textContent === text);
+}
+
 function createTechnicForm(document, state, options = {}) {
   const form = new FakeElement('form', options.formAttrs || { class: 'edit-versions-form', action: '/modpack/edit/example-pack/versions' }, state);
   if (options.version !== false) {
@@ -423,6 +431,48 @@ test('fills only the Technic update/status field and waits for explicit confirma
     submissionAttempted: true
   }));
   assert.equal(state.submissions.length, 1);
+});
+
+test('update confirmation overlay focuses the status body and collapses manual fallback details', async () => {
+  const { state, document } = createUpdateHarness();
+  const response = await sendContentMessage(state, validUpdatePayload({
+    preview: {
+      ...validUpdatePayload().preview,
+      versionNumber: '1.2.3',
+      changelogText: 'This changelog text should not be shown for update jobs',
+      updateTitle: 'Example Pack 1.2.3',
+      updateText: 'Update now available: 1.2.3',
+      updateLength: 27,
+      updateCharacterLimit: 255
+    }
+  }));
+
+  assert.equal(response.ok, true);
+
+  const labels = previewLabels(document.documentElement);
+  assert.ok(labels.includes('Technic update/status message (27/255)'));
+  assert.ok(labels.includes('Target Technic page'));
+  assert.ok(labels.includes('Update/status text (27/255)'));
+  assert.equal(labels.includes('Manual fallback version/build number'), false);
+  assert.equal(labels.includes('Manual fallback changelog text'), false);
+  assert.equal(labels.includes('Manual fallback update title'), false);
+  assert.equal(labels.includes('Manual fallback update/status text (27/255)'), false);
+
+  const details = document.documentElement.querySelector('details[data-wgh-manual-fallback-details]');
+  assert.ok(details);
+  assert.equal(details.hasAttribute('open'), false);
+  assert.ok(findElementByText(details, 'summary', 'Manual copy/export details'));
+});
+
+test('changelog confirmation overlay keeps version and changelog manual fallback fields', async () => {
+  const { state, document } = createHarness();
+  const response = await sendContentMessage(state, validPayload());
+
+  assert.equal(response.ok, true);
+  const labels = previewLabels(document.documentElement);
+  assert.ok(labels.includes('Manual fallback version/build number'));
+  assert.ok(labels.includes('Manual fallback changelog text'));
+  assert.equal(labels.some((label) => label.startsWith('Technic update/status message')), false);
 });
 
 test('fills the downloaded Technic updates status form selector safely', async () => {

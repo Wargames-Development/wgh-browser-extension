@@ -523,10 +523,14 @@
     return button;
   }
 
-  function appendReadonlyPreview(parent, label, value, multiline = false) {
+  function appendReadonlyPreview(parent, label, value, multiline = false, options = {}) {
     const wrapper = document.createElement('label');
     wrapper.style.cssText = 'display:block;margin:10px 0 0;color:#d9e5ff;font-weight:700';
     wrapper.textContent = label;
+    wrapper.setAttribute('data-wgh-preview-label', label);
+    if (options.testId) {
+      wrapper.setAttribute('data-wgh-preview-id', options.testId);
+    }
 
     const field = multiline ? document.createElement('textarea') : document.createElement('input');
     field.readOnly = true;
@@ -544,10 +548,42 @@
       'font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace'
     ].join(';');
     if (multiline) {
-      field.rows = 6;
+      field.rows = options.rows || 5;
     }
     wrapper.appendChild(field);
     parent.appendChild(wrapper);
+    return wrapper;
+  }
+
+  function createManualFallbackDetails(preview) {
+    const details = document.createElement('details');
+    details.setAttribute('data-wgh-manual-fallback-details', 'true');
+    details.style.cssText = [
+      'margin-top:12px',
+      'border:1px solid #2e4265',
+      'border-radius:10px',
+      'background:#0d1626',
+      'padding:10px'
+    ].join(';');
+
+    const summary = document.createElement('summary');
+    summary.textContent = 'Manual copy/export details';
+    summary.style.cssText = 'cursor:pointer;color:#d9e5ff;font-weight:700';
+    details.appendChild(summary);
+
+    const help = document.createElement('p');
+    help.textContent = 'Use this if you cancel the extension flow or need to paste the Technic update manually.';
+    help.style.cssText = 'margin:8px 0 0;color:#b9c8dd;font-size:12px';
+    details.appendChild(help);
+
+    if (preview?.technicUrl) {
+      appendReadonlyPreview(details, 'Target Technic page', redactSensitiveText(preview.technicUrl), false, { testId: 'manual-target-url' });
+    }
+    if (preview?.updateText) {
+      appendReadonlyPreview(details, `Update/status text (${String(preview.updateText).length}/${preview.updateCharacterLimit || MAX_UPDATE_TEXT_LENGTH})`, redactSensitiveText(preview.updateText), true, { testId: 'manual-update-status-text', rows: 4 });
+    }
+
+    return details;
   }
 
   function setStatus(wrapper, message, level = 'info') {
@@ -593,7 +629,9 @@
     body.style.margin = '0 0 10px';
 
     const fallback = document.createElement('p');
-    fallback.textContent = 'Manual copy/export remains the safe fallback. The extension never stores Technic credentials, cookies, session tokens, 2FA data, or Wargames internal API tokens.';
+    fallback.textContent = preview?.jobType === UPDATE_JOB_TYPE
+      ? 'Manual copy/export remains available in the details section. The extension never stores Technic credentials, cookies, session tokens, 2FA data, or Wargames internal API tokens.'
+      : 'Manual copy/export remains the safe fallback. The extension never stores Technic credentials, cookies, session tokens, 2FA data, or Wargames internal API tokens.';
     fallback.style.cssText = 'margin:0 0 10px;color:#b9c8dd';
 
     const status = document.createElement('p');
@@ -602,17 +640,18 @@
     status.style.cssText = 'margin:8px 0 0;color:#b9d3ff';
 
     wrapper.append(title, body, fallback);
-    if (preview?.versionNumber) {
-      appendReadonlyPreview(wrapper, 'Manual fallback version/build number', redactSensitiveText(preview.versionNumber));
-    }
-    if (preview?.changelogText) {
-      appendReadonlyPreview(wrapper, 'Manual fallback changelog text', redactSensitiveText(preview.changelogText), true);
-    }
-    if (preview?.updateTitle) {
-      appendReadonlyPreview(wrapper, 'Manual fallback update title', redactSensitiveText(preview.updateTitle));
-    }
-    if (preview?.updateText) {
-      appendReadonlyPreview(wrapper, `Manual fallback update/status text (${String(preview.updateText).length}/${preview.updateCharacterLimit || MAX_UPDATE_TEXT_LENGTH})`, redactSensitiveText(preview.updateText), true);
+    if (preview?.jobType === UPDATE_JOB_TYPE) {
+      if (preview?.updateText) {
+        appendReadonlyPreview(wrapper, `Technic update/status message (${String(preview.updateText).length}/${preview.updateCharacterLimit || MAX_UPDATE_TEXT_LENGTH})`, redactSensitiveText(preview.updateText), true, { testId: 'primary-update-status-text', rows: 4 });
+        wrapper.appendChild(createManualFallbackDetails(preview));
+      }
+    } else {
+      if (preview?.versionNumber) {
+        appendReadonlyPreview(wrapper, 'Manual fallback version/build number', redactSensitiveText(preview.versionNumber));
+      }
+      if (preview?.changelogText) {
+        appendReadonlyPreview(wrapper, 'Manual fallback changelog text', redactSensitiveText(preview.changelogText), true);
+      }
     }
     wrapper.appendChild(status);
     document.documentElement.appendChild(wrapper);
